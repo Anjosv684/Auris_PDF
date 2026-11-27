@@ -6,6 +6,7 @@ import { getDoc } from "../lib/docs";
 import { openPdf, renderPage, type PDFDoc } from "../lib/pdfjs";
 import { pickFiles, saveAs } from "../lib/platform";
 import { uid, baseName } from "../lib/util";
+import { capture } from "../lib/analytics";
 
 export function Organize() {
   const tab = useActiveTab()!;
@@ -72,7 +73,10 @@ export function Organize() {
     await runTask("Extraindo páginas…", async () => {
       const bytes = await build(picked);
       const [out] = await extractPages(bytes, [picked.map((_, i) => i)]);
-      if (await saveAs(out, `${baseName(tab.name)} - páginas.pdf`)) st.toast("Páginas extraídas");
+      if (await saveAs(out, `${baseName(tab.name)} - páginas.pdf`)) {
+        capture("pdf_pages_extracted", { page_count: picked.length });
+        st.toast("Páginas extraídas");
+      }
     });
   };
   const build = (list: OrgItem[]) => applyOrganize(tab.bytes, list, new Map([...ext.current].map(([k, v]) => [k, v.bytes])));
@@ -82,6 +86,7 @@ export function Organize() {
     await runTask("Aplicando…", async () => {
       const bytes = await build(items);
       st.replaceBytes(tab.id, bytes, { record: true });
+      capture("pdf_pages_organized", { original_page_count: tab.pageCount, resulting_page_count: items.length });
       st.setView("doc");
       st.toast("Páginas reorganizadas");
     });

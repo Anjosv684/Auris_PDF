@@ -6,6 +6,7 @@ import type { Obj, StampObj } from "./types";
 import { buildPdf } from "./export";
 import { isApp, pickFiles, readPath, saveAs, writePath } from "./platform";
 import { getDoc, dropDoc } from "./docs";
+import { capture, posthogLog } from "./analytics";
 
 const st = () => useStore.getState();
 
@@ -17,6 +18,9 @@ export async function openFiles() {
 export function openBytes(f: { name: string; path?: string; bytes: Uint8Array }) {
   st().openTab(f);
   if (f.path) rememberRecent(f.path);
+  const source = f.path ? "local_file" : "generated_or_downloaded";
+  capture("pdf_opened", { source });
+  posthogLog.info("PDF opened", { source });
 }
 
 export async function openPaths(paths: string[]) {
@@ -173,6 +177,9 @@ export async function saveTab(as = false) {
     st().replaceBytes(t.id, bytes, { record: true, name: isApp ? name : t.name, path: isApp ? path : t.path });
     st().patchTab(t.id, { dirty: false, objects: keepSig });
     if (isApp) rememberRecent(path);
+    const destination = isApp ? "local_file" : "download";
+    capture("pdf_saved", { save_as: as, destination });
+    posthogLog.info("PDF saved", { save_as: as, destination });
     st().toast(isApp ? `Salvo em ${name}` : "Download iniciado");
   });
 }

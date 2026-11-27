@@ -14,6 +14,7 @@ import { appVersion, checkForUpdate } from "../lib/updater";
 import { PrintDialog } from "./PrintDialog";
 import { FeatureIcon, type Feature } from "./icons";
 import type { CertInfo, Tab } from "../lib/types";
+import { capture } from "../lib/analytics";
 
 function Modal({ title, icon, children, foot, wide, onClose }: { title: React.ReactNode; icon?: Feature; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
   const close = onClose ?? (() => useStore.getState().openDialog(null));
@@ -95,6 +96,7 @@ function MergeDialog({ d }: { d: Extract<Dialog, { kind: "merge" }> }) {
         if (isApp) openBytes({ name: p.split(/[\\/]/).pop()!, path: p, bytes: out });
       } else openBytes({ name, bytes: out });
       close();
+      capture("pdfs_merged", { input_file_count: list.length, output_destination: save ? "saved" : "opened" });
       useStore.getState().toast(`${list.length} arquivos unidos • ${fmtSize(out.length)}`);
     });
   };
@@ -169,6 +171,7 @@ function SplitDialog() {
       }));
       if (await saveMany(files, `${b} - dividido.zip`)) {
         close();
+        capture("pdf_split", { split_mode: mode, output_file_count: files.length });
         useStore.getState().toast(`${files.length} arquivo(s) gerado(s)`);
       }
     });
@@ -248,8 +251,10 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
         if (isApp && it.path) await writePath(it.path.replace(/[^\\/]+$/, name), it.out!);
         else pending.push({ name, bytes: it.out! });
       }
-      if (pending.length) await saveMany(pending, "comprimidos.zip");
+      const saved = pending.length ? await saveMany(pending, "comprimidos.zip") : true;
+      if (!saved) return;
       const a = done.reduce((s, i) => s + i.bytes.length, 0), b = done.reduce((s, i) => s + i.out!.length, 0);
+      capture("pdf_compressed", { file_count: done.length, compression_level: level, grayscale: gray });
       useStore.getState().toast(`Pronto! ${fmtSize(a - b)} economizados`);
       close();
     });
@@ -298,6 +303,7 @@ function ImagesDialog({ d }: { d: Extract<Dialog, { kind: "images" }> }) {
       const out = await imagesToPdf(list, mode);
       openBytes({ name: `${baseName(list[0].name.replace(/\.\w+$/, ""))}.pdf`, bytes: out });
       useStore.getState().patchTab(useStore.getState().activeId!, { dirty: true });
+      capture("pdf_created_from_images", { image_count: list.length, page_size_mode: mode });
       close();
     });
   };
@@ -341,6 +347,7 @@ function ExportImagesDialog() {
       const ext = fmt === "png" ? "png" : "jpg";
       const files = imgs.map((bytes, i) => ({ bytes, name: `${baseName(t.name)} - pag ${idx[i] + 1}.${ext}` }));
       if (await saveMany(files, `${baseName(t.name)} - imagens.zip`)) {
+        capture("pdf_pages_exported_as_images", { image_format: fmt, dpi, page_count: files.length });
         useStore.getState().toast(`${files.length} imagem(ns) exportada(s)`);
         close();
       }
@@ -431,6 +438,7 @@ function SignDialog() {
         st.patchTab(cur.id, { dirty: false, ...(isApp ? { path: p, name: p.split(/[\\/]/).pop()! } : {}) });
         st.toast(`Documento assinado por ${signer.summary.name}`);
       } else st.toast("Assinado. Lembre-se de salvar (Ctrl+S).", "info");
+      capture("pdf_digitally_signed", { certificate_source: src, visible_signature: visible });
       st.set({ sigPanel: true });
     });
   };
