@@ -18,15 +18,11 @@ export function Home() {
   const rec = isApp ? recents() : [];
   return (
     <div className="home">
-      <div style={{ textAlign: "center" }}>
-        <h1 className="home-logo"><img src="/brand/logo.png" alt="Auris" draggable={false} /><span>PDF</span></h1>
-      </div>
       <div className="sub">Abra, edite, assine e organize seus PDFs — rápido e 100% no seu computador.</div>
       <div className={`drop ${over ? "over" : ""}`} onClick={openFiles}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={() => setOver(false)}>
         <FolderOpen size={34} color="#5aa2f5" />
         <div className="big">Arraste PDFs aqui ou clique para abrir</div>
-        <div className="hint">Vários arquivos abrem em abas • Ctrl+O</div>
       </div>
       <div className="cards">
         {CARDS.map((c) => (
