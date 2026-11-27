@@ -140,3 +140,13 @@ export async function openExternal(url: string) {
     await invoke("open_url", { url });
   } else window.open(url, "_blank");
 }
+
+// ---------- compressão com o motor PyMuPDF (sidecar auris-compress.exe) ----------
+export type NativeCompress = { bytes: Uint8Array; mode: "normal" | "imagem" | "original" };
+
+export async function compressNative(bytes: Uint8Array, level: "Leve" | "Média" | "Forte", gray: boolean): Promise<NativeCompress> {
+  const { invoke } = await tauri();
+  const lv = { Leve: "leve", Média: "media", Forte: "forte" }[level];
+  const buf = new Uint8Array(await invoke<ArrayBuffer>("compress_pdf", bytes, { headers: { level: lv, gray: gray ? "1" : "0" } }));
+  return { mode: (["normal", "imagem", "original"] as const)[buf[0]] ?? "normal", bytes: buf.subarray(1) };
+}

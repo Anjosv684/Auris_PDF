@@ -6,3 +6,7 @@ src-tauri/gen/
 
 # chaves nunca entram no projeto
 *.key
+
+compressor/build/
+src-tauri/binaries/
+__pycache__/

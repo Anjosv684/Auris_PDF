@@ -11,7 +11,7 @@ export function UpdateUI() {
     return (
       <div className="update-screen">
         <div className="update-card">
-          <div className="brand-mark big">A</div>
+          <img src="/brand/mark.png" alt="" width={64} height={64} draggable={false} />
           <h2>Atualizando o Auris PDF</h2>
           <div className="muted">Versão {version}</div>
           <div className="update-bar"><div className={pct === null ? "indet" : ""} style={pct === null ? undefined : { width: pct + "%" }} /></div>
@@ -37,7 +37,7 @@ export function UpdateUI() {
           <button className="btn ghost" style={{ flex: "none" }} onClick={() => useUpdate.setState({ dismissed: true })}>Depois</button>
         </div>
       </div>
-      <button className="ib" onClick={() => useUpdate.setState({ dismissed: true })}><X size={15} /></button>
+      <button className="ib" title="Lembrar depois" onClick={() => useUpdate.setState({ dismissed: true })}><X size={15} /></button>
     </div>
   );
 }

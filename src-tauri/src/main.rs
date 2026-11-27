@@ -116,6 +116,63 @@ fn open_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+// ------------------------------------------------------------------ compressão (motor PyMuPDF)
+/// Roda o motor `auris-compress.exe` (sidecar instalado ao lado do app).
+/// Corpo: bytes do PDF. Cabeçalhos: `level` (leve|media|forte) e `gray` (0|1).
+/// Resposta: 1 byte com o modo (0 normal, 1 páginas viraram imagem, 2 original mantido) + PDF.
+#[tauri::command]
+async fn compress_pdf(request: Request<'_>) -> Result<Response, String> {
+    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let level = header("level");
+    if !matches!(level.as_str(), "leve" | "media" | "forte") {
+        return Err("Nível de compressão inválido".into());
+    }
+    let gray = if header("gray") == "1" { "1" } else { "0" };
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<Response, String> {
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let engine = exe.with_file_name(if cfg!(windows) { "auris-compress.exe" } else { "auris-compress" });
+        if !engine.is_file() {
+            return Err("Motor de compressão não encontrado. Reinstale o Auris PDF.".into());
+        }
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let dir = std::env::temp_dir();
+        let input = dir.join(format!("auris-cmp-{nanos}-in.pdf"));
+        let output = dir.join(format!("auris-cmp-{nanos}-out.pdf"));
+        std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
+        let mut cmd = std::process::Command::new(&engine);
+        cmd.arg(&input).arg(&output).arg(&level).arg(gray);
+        #[cfg(windows)]
+        hidden(&mut cmd);
+        let run = cmd.output();
+        let _ = std::fs::remove_file(&input);
+        let out = run.map_err(|e| format!("Falha ao iniciar o motor de compressão: {e}"))?;
+        let line = String::from_utf8_lossy(&out.stdout).lines().last().unwrap_or("").to_string();
+        let info: serde_json::Value = serde_json::from_str(&line).unwrap_or(serde_json::Value::Null);
+        if !out.status.success() {
+            let _ = std::fs::remove_file(&output);
+            let msg = info.get("erro").and_then(|v| v.as_str()).unwrap_or("Falha ao comprimir o PDF.");
+            return Err(if msg.contains("senha") { "PDF protegido por senha.".into() } else { msg.to_string() });
+        }
+        let pdf = std::fs::read(&output).map_err(|e| e.to_string());
+        let _ = std::fs::remove_file(&output);
+        let mode: u8 = match info.get("modo").and_then(|v| v.as_str()) {
+            Some("imagem") => 1,
+            Some("original") => 2,
+            _ => 0,
+        };
+        let mut res = Vec::with_capacity(pdf.as_ref().map(|p| p.len()).unwrap_or(0) + 1);
+        res.push(mode);
+        res.extend_from_slice(&pdf?);
+        Ok(Response::new(res))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 // ------------------------------------------------------------------ certificados
 #[cfg(windows)]
 fn powershell(script: &str, envs: &[(&str, String)]) -> Result<String, String> {
@@ -273,6 +330,7 @@ fn main() {
             write_file,
             open_default_apps,
             open_url,
+            compress_pdf,
             list_certificates,
             sign_with_certificate
         ])

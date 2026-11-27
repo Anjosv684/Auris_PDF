@@ -19,7 +19,7 @@ export function Home() {
   return (
     <div className="home">
       <div style={{ textAlign: "center" }}>
-        <h1>Auris PDF</h1>
+        <h1 className="home-logo"><img src="/brand/logo.png" alt="Auris" draggable={false} /><span>PDF</span></h1>
       </div>
       <div className="sub">Abra, edite, assine e organize seus PDFs — rápido e 100% no seu computador.</div>
       <div className={`drop ${over ? "over" : ""}`} onClick={openFiles}

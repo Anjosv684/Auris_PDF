@@ -7,6 +7,7 @@ import { Organize } from "./components/Organize";
 import { Home } from "./components/Home";
 import { Dialogs } from "./components/Dialogs";
 import { UpdateUI } from "./components/UpdateUI";
+import { Tooltip } from "./components/Tooltip";
 import { startAutoCheck } from "./lib/updater";
 import { setPasswordAsker } from "./lib/pdfjs";
 import { viewerApi } from "./lib/viewerApi";
@@ -218,6 +219,7 @@ export default function App() {
       <Dialogs />
       <Toasts />
       <UpdateUI />
+      <Tooltip />
       {dragging && <div className="dropzone-overlay">Solte para abrir</div>}
     </div>
   );

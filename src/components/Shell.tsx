@@ -21,8 +21,8 @@ export function TopBar() {
   return (
     <div className="topbar">
       <div className="brand" onClick={() => useStore.getState().set({ activeId: null })} title="Início">
-        <div className="brand-mark">A</div>
-        <span>AURIS <small>PDF</small></span>
+        <img src="/brand/logo.png" alt="Auris" className="brand-logo" draggable={false} />
+        <small className="brand-pdf">PDF</small>
       </div>
       <div className="tabs">
         {tabs.map((t) => (
@@ -30,7 +30,7 @@ export function TopBar() {
             onAuxClick={(e) => e.button === 1 && closeTabSafe(t.id)}>
             <span className="name">{t.name}</span>
             {t.dirty && <span className="dot" title="Alterações não salvas" />}
-            <button className="x" onClick={(e) => { e.stopPropagation(); closeTabSafe(t.id); }}><X size={14} /></button>
+            <button className="x" title="Fechar aba (Ctrl+W)" onClick={(e) => { e.stopPropagation(); closeTabSafe(t.id); }}><X size={14} /></button>
           </div>
         ))}
         <button className="ib" title="Abrir PDF (Ctrl+O)" onClick={openFiles} style={{ alignSelf: "center" }}><Plus size={17} /></button>
@@ -120,7 +120,7 @@ export function SearchBar() {
       <span className="count">{q && count ? (count.total ? `${count.current} de ${count.total}` : "Nada") : ""}</span>
       <button className="ib" onClick={() => viewerApi.find(q, true, true)} title="Anterior (Shift+Enter)"><ChevronUp size={16} /></button>
       <button className="ib" onClick={() => viewerApi.find(q, false, true)} title="Próximo (Enter)"><ChevronDown size={16} /></button>
-      <button className="ib" onClick={() => useStore.getState().set({ search: false })}><X size={16} /></button>
+      <button className="ib" title="Fechar busca (Esc)" onClick={() => useStore.getState().set({ search: false })}><X size={16} /></button>
     </div>
   );
 }
@@ -138,7 +138,7 @@ export function SigPanel() {
     <div className="sig-panel">
       <div className="row" style={{ flex: "none" }}>
         <b style={{ flex: 1, fontSize: 14 }}><ShieldCheck size={16} style={{ verticalAlign: -3 }} /> Assinaturas</b>
-        <button className="ib" style={{ flex: "none" }} onClick={() => useStore.getState().set({ sigPanel: false })}><X size={16} /></button>
+        <button className="ib" title="Fechar painel" style={{ flex: "none" }} onClick={() => useStore.getState().set({ sigPanel: false })}><X size={16} /></button>
       </div>
       {!list && <div className="muted">Verificando…</div>}
       {list && !list.length && <div className="muted">Este documento não possui assinaturas digitais.</div>}

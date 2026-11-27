@@ -7,9 +7,9 @@ import { loadForEdit, garbageCollect } from "./pdfcore";
 
 export type Level = "Leve" | "Média" | "Forte";
 export const LEVELS: Record<Level, { max: number; q: number; min: number; desc: string }> = {
-  Leve: { max: 2400, q: 0.85, min: 120_000, desc: "Quase sem perda — bom para impressão" },
-  Média: { max: 1600, q: 0.72, min: 60_000, desc: "Equilíbrio entre qualidade e tamanho" },
-  Forte: { max: 1100, q: 0.55, min: 25_000, desc: "Máxima redução — WhatsApp e e-mail" },
+  Leve: { max: 2400, q: 0.85, min: 120_000, desc: "Impressão, quase sem perda" },
+  Média: { max: 1600, q: 0.72, min: 60_000, desc: "Padrão — bom equilíbrio entre qualidade e tamanho" },
+  Forte: { max: 1100, q: 0.55, min: 25_000, desc: "WhatsApp, e-mail e portais com limite de tamanho" },
 };
 
 function unPredict(data: Uint8Array, w: number, h: number, ch: number): Uint8Array {

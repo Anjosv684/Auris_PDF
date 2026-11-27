@@ -4,7 +4,7 @@ import { useStore, runTask, getActiveTab, type Dialog } from "../lib/store";
 import { mergePdfs, extractPages, imagesToPdf, pdfToImages } from "../lib/pages";
 import { compressPdf, LEVELS, type Level } from "../lib/compress";
 import { buildPdf } from "../lib/export";
-import { pickFiles, saveAs, saveMany, isApp, writePath, listCertificates, type PickedFile } from "../lib/platform";
+import { pickFiles, saveAs, saveMany, isApp, writePath, listCertificates, compressNative, type PickedFile } from "../lib/platform";
 import { fmtSize, baseName, parseRanges, uid, removeWhite, loadImage } from "../lib/util";
 import { addImageAt, flatten, openBytes, addSigField } from "../lib/actions";
 import { signerFromPfx, signerFromStore, signPdf, describeCert, certFromDer, type Signer } from "../lib/sign";
@@ -23,7 +23,7 @@ function Modal({ title, children, foot, wide, onClose }: { title: React.ReactNod
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className={`modal ${wide ? "wide" : ""}`}>
-        <div className="modal-head"><h2>{title}</h2><button className="ib" onClick={close}><X size={17} /></button></div>
+        <div className="modal-head"><h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
         <div className="modal-body">{children}</div>
         {foot && <div className="modal-foot">{foot}</div>}
       </div>
@@ -113,9 +113,9 @@ function MergeDialog({ d }: { d: Extract<Dialog, { kind: "merge" }> }) {
             <span className="nm" title={m.name}>{m.name}</span>
             <span className="muted">{m.count} pág.</span>
             <input placeholder="todas (ex.: 1-3, 5)" value={m.pages} onChange={(e) => setList((l) => l.map((x) => (x.id === m.id ? { ...x, pages: e.target.value } : x)))} title="Páginas a incluir" />
-            <button className="ib" onClick={() => move(i, -1)}><ArrowUp size={15} /></button>
-            <button className="ib" onClick={() => move(i, 1)}><ArrowDown size={15} /></button>
-            <button className="ib" onClick={() => setList((l) => l.filter((x) => x.id !== m.id))}><Trash2 size={15} /></button>
+            <button className="ib" title="Mover para cima" onClick={() => move(i, -1)}><ArrowUp size={15} /></button>
+            <button className="ib" title="Mover para baixo" onClick={() => move(i, 1)}><ArrowDown size={15} /></button>
+            <button className="ib" title="Remover da lista" onClick={() => setList((l) => l.filter((x) => x.id !== m.id))}><Trash2 size={15} /></button>
           </div>
         ))}
         {!list.length && <div className="muted">Adicione pelo menos dois PDFs.</div>}
@@ -218,9 +218,18 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
     for (const it of list) {
       setList((l) => l.map((x) => (x.id === it.id ? { ...x, status: "Comprimindo…", out: undefined } : x)));
       try {
-        const r = await compressPdf(it.bytes, level, gray, (a, b) =>
-          setList((l) => l.map((x) => (x.id === it.id ? { ...x, status: b ? `Imagens ${a}/${b}` : "Otimizando…" } : x))));
-        setList((l) => l.map((x) => (x.id === it.id ? { ...x, out: r.bytes, status: undefined } : x)));
+        let out: Uint8Array, note: string | undefined;
+        if (isApp) {
+          // motor PyMuPDF (auris-compress.exe)
+          const r = await compressNative(it.bytes, level, gray);
+          out = r.bytes;
+          note = r.mode === "imagem" ? "páginas convertidas em imagem" : r.mode === "original" ? "já estava otimizado" : undefined;
+        } else {
+          const r = await compressPdf(it.bytes, level, gray, (a, b) =>
+            setList((l) => l.map((x) => (x.id === it.id ? { ...x, status: b ? `Imagens ${a}/${b}` : "Otimizando…" } : x))));
+          out = r.bytes;
+        }
+        setList((l) => l.map((x) => (x.id === it.id ? { ...x, out, status: note } : x)));
       } catch (e) {
         setList((l) => l.map((x) => (x.id === it.id ? { ...x, status: "Erro: " + (e as Error).message } : x)));
       }
@@ -263,7 +272,7 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
             <span className="muted">{fmtSize(it.bytes.length)}</span>
             {it.out && <span className="res">→ {fmtSize(it.out.length)} (-{Math.round((1 - it.out.length / it.bytes.length) * 100)}%)</span>}
             {it.status && <span className="muted">{it.status}</span>}
-            <button className="ib" onClick={() => setList((l) => l.filter((x) => x.id !== it.id))} disabled={running}><Trash2 size={15} /></button>
+            <button className="ib" title="Remover da lista" onClick={() => setList((l) => l.filter((x) => x.id !== it.id))} disabled={running}><Trash2 size={15} /></button>
           </div>
         ))}
         {!list.length && <div className="muted">Adicione os PDFs que deseja comprimir.</div>}
@@ -304,9 +313,9 @@ function ImagesDialog() {
           <div key={it.id} className="fileitem">
             <img src={it.url} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} />
             <span className="nm">{it.name}</span>
-            <button className="ib" onClick={() => setList((l) => { const n = [...l]; if (i > 0) [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}><ArrowUp size={15} /></button>
-            <button className="ib" onClick={() => setList((l) => { const n = [...l]; if (i < n.length - 1) [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}><ArrowDown size={15} /></button>
-            <button className="ib" onClick={() => setList((l) => l.filter((x) => x.id !== it.id))}><Trash2 size={15} /></button>
+            <button className="ib" title="Mover para cima" onClick={() => setList((l) => { const n = [...l]; if (i > 0) [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}><ArrowUp size={15} /></button>
+            <button className="ib" title="Mover para baixo" onClick={() => setList((l) => { const n = [...l]; if (i < n.length - 1) [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}><ArrowDown size={15} /></button>
+            <button className="ib" title="Remover da lista" onClick={() => setList((l) => l.filter((x) => x.id !== it.id))}><Trash2 size={15} /></button>
           </div>
         ))}
       </div>

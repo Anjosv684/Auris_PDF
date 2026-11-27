@@ -148,6 +148,13 @@ export function Toolbar() {
 // ---------------- barra de propriedades ----------------
 const COLORS = ["#111111", "#E5484D", "#F76808", "#FFC53D", "#30A46C", "#0091FF", "#185FA5", "#8E4EC6", "#FFFFFF"];
 const HL = ["#FFE066", "#9BE15D", "#7FDBFF", "#FF8FAB", "#FFB347"];
+const COLOR_NAMES: Record<string, string> = {
+  "#111111": "Preto", "#E5484D": "Vermelho", "#F76808": "Laranja", "#FFC53D": "Amarelo", "#30A46C": "Verde",
+  "#0091FF": "Azul claro", "#185FA5": "Azul", "#8E4EC6": "Roxo", "#FFFFFF": "Branco",
+  "#FFE066": "Amarelo", "#9BE15D": "Verde", "#7FDBFF": "Azul", "#FF8FAB": "Rosa", "#FFB347": "Laranja",
+  "#FFF3B0": "Amarelo claro", "#D6ECFF": "Azul claro",
+};
+const colorName = (c: string) => COLOR_NAMES[c.toUpperCase()] ?? c;
 
 export function PropBar() {
   const tool = useStore((s) => s.tool);
@@ -193,7 +200,7 @@ export function PropBar() {
       <b style={{ marginRight: 6 }}>{names[kind]}</b>
       {isShape && <>
         <span className="lbl">Cor</span>
-        {COLORS.slice(0, 8).map((c) => <button key={c} className={`swatch ${strokeVal === c ? "on" : ""}`} style={{ background: c }} onClick={() => setStroke(c)} />)}
+        {COLORS.slice(0, 8).map((c) => <button key={c} className={`swatch ${strokeVal === c ? "on" : ""}`} style={{ background: c }} title={colorName(c)} onClick={() => setStroke(c)} />)}
         <div className="sep" />
         <span className="lbl">Espessura</span>
         <input type="range" min={0.5} max={12} step={0.5} value={widthVal}
@@ -204,16 +211,16 @@ export function PropBar() {
         <div className="sep" />
         <span className="lbl">Preenchimento</span>
         <button className={`swatch none ${!fillVal ? "on" : ""}`} onClick={() => setFill(null)} title="Sem preenchimento" />
-        {COLORS.map((c) => <button key={c} className={`swatch ${fillVal === c ? "on" : ""}`} style={{ background: c }} onClick={() => setFill(c)} />)}
+        {COLORS.map((c) => <button key={c} className={`swatch ${fillVal === c ? "on" : ""}`} style={{ background: c }} title={"Preencher: " + colorName(c)} onClick={() => setFill(c)} />)}
       </>}
       {kind === "highlight" && <>
         <span className="lbl">Cor</span>
-        {HL.map((c) => <button key={c} className={`swatch ${hl === c ? "on" : ""}`} style={{ background: c }} onClick={() => (sel ? upd({ color: c } as Partial<Obj>) : setStyle({ highlight: c }))} />)}
+        {HL.map((c) => <button key={c} className={`swatch ${hl === c ? "on" : ""}`} style={{ background: c }} title={colorName(c)} onClick={() => (sel ? upd({ color: c } as Partial<Obj>) : setStyle({ highlight: c }))} />)}
         {!sel && <span className="lbl" style={{ marginLeft: 8 }}>Dica: selecione um texto e clique no marcador</span>}
       </>}
       {kind === "text" && <>
         <span className="lbl">Cor</span>
-        {COLORS.map((c) => <button key={c} className={`swatch ${textColor === c ? "on" : ""}`} style={{ background: c }} onClick={() => (sel ? upd({ color: c } as Partial<Obj>) : setStyle({ textColor: c }))} />)}
+        {COLORS.map((c) => <button key={c} className={`swatch ${textColor === c ? "on" : ""}`} style={{ background: c }} title={colorName(c)} onClick={() => (sel ? upd({ color: c } as Partial<Obj>) : setStyle({ textColor: c }))} />)}
         <div className="sep" />
         <select value={textSize} onChange={(e) => (sel ? upd({ size: +e.target.value } as Partial<Obj>) : setStyle({ textSize: +e.target.value }))}>
           {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64].map((n) => <option key={n} value={n}>{n} pt</option>)}
@@ -221,8 +228,8 @@ export function PropBar() {
         {sel?.type === "text" && <>
           <button className={`ib ${sel.bold ? "on" : ""}`} onClick={() => upd({ bold: !sel.bold } as Partial<Obj>)} title="Negrito"><Bold size={15} /></button>
           <span className="lbl">Fundo</span>
-          <button className={`swatch none ${!sel.bg ? "on" : ""}`} onClick={() => upd({ bg: null } as Partial<Obj>)} />
-          {["#FFFFFF", "#FFF3B0", "#D6ECFF"].map((c) => <button key={c} className={`swatch ${sel.bg === c ? "on" : ""}`} style={{ background: c }} onClick={() => upd({ bg: c } as Partial<Obj>)} />)}
+          <button className={`swatch none ${!sel.bg ? "on" : ""}`} title="Sem fundo" onClick={() => upd({ bg: null } as Partial<Obj>)} />
+          {["#FFFFFF", "#FFF3B0", "#D6ECFF"].map((c) => <button key={c} className={`swatch ${sel.bg === c ? "on" : ""}`} style={{ background: c }} title={"Fundo: " + colorName(c)} onClick={() => upd({ bg: c } as Partial<Obj>)} />)}
         </>}
       </>}
       {sel?.type === "image" && <>

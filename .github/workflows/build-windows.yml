@@ -31,6 +31,12 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Motor de compressão (PyMuPDF)
+        shell: cmd
+        run: call compressor\build.bat
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:
