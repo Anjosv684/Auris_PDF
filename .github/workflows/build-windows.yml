@@ -1,0 +1,46 @@
+# Publica uma nova versão do Auris PDF no GitHub Releases.
+# Os computadores com o app instalado recebem o aviso de atualização automaticamente.
+#
+# Como lançar uma versão:
+#   1. Aumente "version" em src-tauri/tauri.conf.json (ex.: 1.0.0 -> 1.0.1)
+#   2. git commit, depois: git tag v1.0.1 && git push --tags
+#   (ou aba "Actions" -> "Build Windows" -> "Run workflow")
+#
+# Pré-requisito (uma vez): em Settings -> Secrets and variables -> Actions, crie o secret
+#   TAURI_SIGNING_PRIVATE_KEY com o conteúdo do arquivo %USERPROFILE%\.tauri\auris-pdf.key
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          tagName: v__VERSION__
+          releaseName: Auris PDF v__VERSION__
+          releaseBody: Melhorias e correções.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

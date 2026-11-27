@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Auris PDF",
+  "mainBinaryName": "AurisPDF",
+  "version": "1.0.0",
+  "identifier": "com.auris.pdf",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Auris PDF",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 960,
+        "minHeight": 600,
+        "center": true,
+        "maximized": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "publisher": "Auris",
+    "category": "Productivity",
+    "shortDescription": "Leitor e editor de PDF",
+    "longDescription": "Abra, edite, assine (ICP-Brasil), organize, junte, divida e comprima PDFs.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "pdf"
+        ],
+        "name": "Documento PDF",
+        "description": "Documento PDF",
+        "role": "Editor",
+        "mimeType": "application/pdf"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "PortugueseBR"
+        ],
+        "displayLanguageSelector": false,
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI0ODRBNjYxMDEzMzY1MEUKUldRT1pUTUJZYWFFSkROd3lUZWpVa2cxaVJpMXBDQW9LeHBQNXJkenNOS1dHMEljcWxxQ296RSsK",
+      "endpoints": [
+        "https://github.com/Anjosv684/Auris_PDF/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
