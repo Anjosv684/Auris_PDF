@@ -11,6 +11,7 @@ import {
 } from "./platform";
 import { uid } from "./util";
 import type { Tab } from "./types";
+import { track } from "./telemetry";
 
 // ---------------------------------------------------------------- fontes
 /** Um documento a imprimir: aba aberta ou arquivo vindo do Explorer. */
@@ -111,6 +112,7 @@ export type PageChoice = { mode: "all" | "current" | "range"; range: string };
 
 /** Dispara a impressão em segundo plano. Retorna na hora. */
 export function startPrint(sources: PrintSource[], printer: string, s: PrintSettings, pages: (src: PrintSource) => number[] | undefined) {
+  track("imprimir", { arquivos: sources.length });
   saveSettings(printer, s);
   for (const src of sources) {
     const id = uid();
@@ -138,6 +140,7 @@ export async function openPrint(files?: { name: string; bytes: Uint8Array }[]) {
 
 /** Ctrl+Shift+P: imprime direto com a última impressora/configuração. */
 export async function quickPrint() {
+  track("impressao_rapida");
   const t = getActiveTab();
   if (!t) return;
   if (!isApp) return printBrowser();

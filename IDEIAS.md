@@ -3,7 +3,7 @@
 Lista de pedidos para juntar várias melhorias numa atualização só.
 Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
-## Para a próxima versão (1.0.6)
+## Para a próxima versão (1.0.7)
 
 _(nada ainda)_
 
@@ -12,6 +12,10 @@ _(nada ainda)_
 _(nada ainda)_
 
 ## Já lançado
+
+### 1.0.6
+Pedidos internos (27/11/2026):
+- **Acompanhamento de uso (PostHog)**: painel com as ferramentas mais usadas, os erros que aparecem para os usuários e quem usa mais. Depois da atualização abre uma **tela de boas-vindas** que pede **nome e filial** e deixa escolher o **tema** em cartões com miniatura de cada visual (o tema muda na hora ao clicar). Dá para trocar depois em Configurações → Meu nome, filial e tema. Não envia nome de arquivo nem conteúdo de documento; dá para desligar em Configurações → Enviar estatísticas de uso.
 
 ### 1.0.5
 Pedidos internos (27/11/2026):

@@ -4,6 +4,7 @@ import { useStore } from "./store";
 import { buildPdf } from "./export";
 import { editTextNative, textLines, type TextLine } from "./platform";
 import type { Tab } from "./types";
+import { track } from "./telemetry";
 
 const cache = new Map<string, Promise<TextLine[]>>();
 
@@ -20,6 +21,7 @@ export function linesOf(t: Tab, page: number): Promise<TextLine[]> {
 }
 
 export async function applyTextEdit(t: Tab, page: number, line: TextLine, text: string, pageLines: TextLine[]) {
+  track("editar_texto", { escaneado: !!line.scanned });
   const st = useStore.getState();
   st.set({ busy: "Aplicando a edição…" });
   try {

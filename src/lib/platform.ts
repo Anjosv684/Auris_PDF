@@ -2,6 +2,7 @@
 // no navegador cai para <input type=file> e download.
 import JSZip from "jszip";
 import type { CertInfo } from "./types";
+import { track } from "./telemetry";
 
 export const isApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -145,6 +146,7 @@ export async function openExternal(url: string) {
 export type NativeCompress = { bytes: Uint8Array; mode: "normal" | "imagem" | "original" };
 
 export async function compressNative(bytes: Uint8Array, level: "Leve" | "Média" | "Forte", gray: boolean): Promise<NativeCompress> {
+  track("comprimir", { nivel: level, cinza: gray });
   const { invoke } = await tauri();
   const lv = { Leve: "leve", Média: "media", Forte: "forte" }[level];
   const buf = new Uint8Array(await invoke<ArrayBuffer>("compress_pdf", bytes, { headers: { level: lv, gray: gray ? "1" : "0" } }));

@@ -3,6 +3,7 @@
 import { PDFDict, PDFName, PDFNumber, PDFRawStream, PDFArray, PDFBool } from "pdf-lib";
 import { inflate } from "pako";
 import { loadForEdit, garbageCollect } from "./pdfcore";
+import { track } from "./telemetry";
 
 
 export type Level = "Leve" | "Média" | "Forte";
@@ -67,6 +68,7 @@ export async function compressPdf(
   gray: boolean,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ bytes: Uint8Array; images: number }> {
+  track("comprimir", { nivel: level, motor: "js" });
   const { max, q, min } = LEVELS[level];
   const doc = await loadForEdit(bytes);
   const ctx = doc.context;

@@ -11,6 +11,7 @@ import { hasSignatures, incrementalSave, snapshot } from "./incremental";
 import { loadForEdit, sanitize } from "./pdfcore";
 import { signWithStore } from "./platform";
 import type { CertInfo } from "./types";
+import { track } from "./telemetry";
 
 const asn1 = forge.asn1;
 const C = asn1.Class, T = asn1.Type;
@@ -238,6 +239,7 @@ function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: Cert
 }
 
 export async function signPdf(bytes: Uint8Array, signer: Signer, o: SignOptions): Promise<Uint8Array> {
+  track("assinar_digital");
   const incremental = hasSignatures(bytes);
   const doc = await loadForEdit(bytes);
   const snap = incremental ? snapshot(doc) : null;

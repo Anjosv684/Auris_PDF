@@ -5,6 +5,7 @@ import {
 import { loadForEdit, garbageCollect } from "./pdfcore";
 export { garbageCollect };
 import { normalizeImage, dataUrlToBytes, blobToDataUrl } from "./util";
+import { track } from "./telemetry";
 
 export type OrgItem =
   | { kind: "page"; index: number; rot: number; key: string }
@@ -61,6 +62,7 @@ export async function applyOrganize(
 export type MergeInput = { name: string; bytes: Uint8Array; pages?: number[] };
 
 export async function mergePdfs(files: MergeInput[]): Promise<Uint8Array> {
+  track("juntar", { arquivos: files.length });
   const out = await PDFDocument.create();
   for (const f of files) {
     const src = await loadForEdit(f.bytes);
@@ -73,6 +75,7 @@ export async function mergePdfs(files: MergeInput[]): Promise<Uint8Array> {
 }
 
 export async function extractPages(bytes: Uint8Array, groups: number[][]): Promise<Uint8Array[]> {
+  track("dividir", { partes: groups.length });
   const src = await loadForEdit(bytes);
   const res: Uint8Array[] = [];
   for (const g of groups) {
@@ -88,6 +91,7 @@ export async function imagesToPdf(
   mode: "a4" | "image",
   margin = 24,
 ): Promise<Uint8Array> {
+  track("imagens_para_pdf", { imagens: images.length });
   const doc = await PDFDocument.create();
   for (const im of images) {
     const ext = im.name.split(".").pop()!.toLowerCase();
@@ -118,6 +122,7 @@ export async function pdfToImages(
   format: "png" | "jpeg",
   onProgress?: (i: number) => void,
 ): Promise<Uint8Array[]> {
+  track("pdf_para_imagens", { paginas: pages.length });
   const { openPdf, renderPage } = await import("./pdfjs");
   const pdf = await openPdf(bytes);
   const out: Uint8Array[] = [];

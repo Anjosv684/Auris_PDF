@@ -1,6 +1,6 @@
 [package]
 name = "auris-pdf"
-version = "1.0.5"
+version = "1.0.6"
 description = "Auris PDF — leitor e editor de PDF"
 authors = ["Auris"]
 edition = "2021"

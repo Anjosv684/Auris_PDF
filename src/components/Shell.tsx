@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import {
-  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw, RotateCw, Palette,
+  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw, RotateCw, Palette, UserRound, BarChart3,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
 import { closeTabSafe, openFiles } from "../lib/actions";
@@ -14,12 +14,15 @@ import { Menu } from "./Toolbar";
 import { FeatureIcon } from "./icons";
 import { setPageBar } from "./PageBar";
 import { THEMES, setTheme, useTheme } from "../lib/theme";
+import { askProfile, setTelemetry, telemetryOn, useProfile } from "../lib/telemetry";
 import type { Tab } from "../lib/types";
 
 export function TopBar() {
   const hasUpdate = useUpdate((s) => s.status === "available");
   const pageBar = useStore((s) => s.pageBar);
   const theme = useTheme((s) => s.theme);
+  const profile = useProfile((s) => s.profile);
+  const statsOn = useProfile((s) => s.enabled);
   const tabs = useStore((s) => s.tabs);
   const activeId = useStore((s) => s.activeId);
   const setActive = useStore((s) => s.setActive);
@@ -58,6 +61,15 @@ export function TopBar() {
                 </button>
               ))}
             </div>
+            {telemetryOn && <>
+              <hr />
+              <button onClick={() => { askProfile(); close(); }}>
+                <UserRound size={16} /> Meu nome, filial e tema <span className="k">{profile ? profile.nome : "—"}</span>
+              </button>
+              <button onClick={() => { setTelemetry(!statsOn); close(); }} title="Envia só quais ferramentas são usadas e os erros. Nenhum documento sai do computador.">
+                <BarChart3 size={16} /> Enviar estatísticas de uso <span className="k">{statsOn ? "Ligado" : "Desligado"}</span>
+              </button>
+            </>}
             <hr />
             <button onClick={() => { checkForUpdate(true); close(); }}><RefreshCw size={16} /> Verificar atualizações</button>
             <button onClick={() => { useStore.getState().openDialog({ kind: "about" }); close(); }}><Info size={16} /> Sobre o Auris PDF</button>

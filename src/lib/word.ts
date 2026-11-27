@@ -3,6 +3,7 @@ import { useStore, getActiveTab } from "./store";
 import { buildPdf } from "./export";
 import { isApp, pickFiles, saveAs, writePath, wordNative, openPath, type PickedFile } from "./platform";
 import { baseName } from "./util";
+import { track } from "./telemetry";
 
 const docxName = (name: string) => `${baseName(name)}.docx`;
 
@@ -24,6 +25,7 @@ function done(saved: string[], scanned: number) {
 
 /** Converte a aba atual (com anotações e formulários) e pergunta onde salvar. */
 export async function exportWord() {
+  track("pdf_para_word", { origem: "aba" });
   const st = useStore.getState();
   const t = getActiveTab();
   if (!t) return;
@@ -42,6 +44,7 @@ export async function exportWord() {
 
 /** Tela inicial: escolhe um ou mais PDFs e salva cada .docx ao lado do original. */
 export async function convertFilesToWord(files?: PickedFile[]) {
+  track("pdf_para_word", { origem: "arquivos" });
   const st = useStore.getState();
   if (!isApp) return st.toast("A conversão para Word está disponível no app instalado.", "info");
   const list = files ?? (await pickFiles("pdf", true));

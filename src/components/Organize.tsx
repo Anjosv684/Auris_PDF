@@ -6,6 +6,7 @@ import { getDoc } from "../lib/docs";
 import { openPdf, renderPage, type PDFDoc } from "../lib/pdfjs";
 import { pickFiles, saveAs } from "../lib/platform";
 import { uid, baseName } from "../lib/util";
+import { track } from "../lib/telemetry";
 
 export function Organize() {
   const tab = useActiveTab()!;
@@ -78,6 +79,7 @@ export function Organize() {
   const build = (list: OrgItem[]) => applyOrganize(tab.bytes, list, new Map([...ext.current].map(([k, v]) => [k, v.bytes])));
 
   const apply = async () => {
+    track("organizar_paginas");
     const st = useStore.getState();
     await runTask("Aplicando…", async () => {
       const bytes = await build(items);

@@ -6,6 +6,8 @@ import { Viewer } from "./components/Viewer";
 import { Organize } from "./components/Organize";
 import { Home } from "./components/Home";
 import { Dialogs } from "./components/Dialogs";
+import { ProfilePrompt } from "./components/ProfilePrompt";
+import { startTelemetry } from "./lib/telemetry";
 import { UpdateUI } from "./components/UpdateUI";
 import { PrintJobs } from "./components/PrintJobs";
 import { OcrHint } from "./components/OcrHint";
@@ -41,6 +43,7 @@ export default function App() {
 
   // procura atualizações ao abrir e periodicamente
   useEffect(() => startAutoCheck(), []);
+  useEffect(() => startTelemetry(), []);
 
   // título da janela
   useEffect(() => {
@@ -247,6 +250,7 @@ export default function App() {
         </>
       )}
       <Dialogs />
+      <ProfilePrompt />
       <Toasts />
       <UpdateUI />
       <PrintJobs />

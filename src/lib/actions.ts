@@ -6,6 +6,7 @@ import type { Obj, StampObj } from "./types";
 import { buildPdf } from "./export";
 import { isApp, pickFiles, readPath, saveAs, writePath } from "./platform";
 import { getDoc, dropDoc } from "./docs";
+import { track } from "./telemetry";
 
 const st = () => useStore.getState();
 
@@ -15,6 +16,7 @@ export async function openFiles() {
 }
 
 export function openBytes(f: { name: string; path?: string; bytes: Uint8Array }) {
+  track("abrir_pdf");
   st().openTab(f);
   if (f.path) rememberRecent(f.path);
 }
@@ -54,6 +56,7 @@ function place(page: number, x: number, y: number, w: number, h: number) {
 
 export async function addImageAt(src: Blob | string, pt = viewerApi.insertPoint(), maxW = 220) {
   if (!getActiveTab()) return;
+  track("inserir_imagem");
   const url = typeof src === "string" ? src : await blobToDataUrl(src);
   const img = await normalizeImage(url);
   const ratio = img.w / img.h;
@@ -87,6 +90,7 @@ export const STAMPS: { label: string; color: string }[] = [
 
 export function addStamp(label: string, color: string, withDate = true) {
   if (!getActiveTab()) return;
+  track("carimbo", { carimbo: label.slice(0, 30) });
   const pt = viewerApi.insertPoint();
   const w = Math.max(120, label.length * 13 + 30), h = withDate ? 54 : 40;
   const obj: StampObj = { id: uid(), type: "stamp", label, color, date: withDate ? todayBR() : "", opacity: 1, ...place(pt.page, pt.x, pt.y, w, h) };
@@ -155,6 +159,7 @@ export function highlightSelection(): boolean {
 export async function saveTab(as = false) {
   const t = getActiveTab();
   if (!t) return;
+  track(as ? "salvar_como" : "salvar");
   if (t.objects.some((o) => o.type === "sigfield") && !as)
     st().toast("O campo de assinatura digital só é gravado ao clicar em “Assinar”.", "info");
   await runTask("Salvando…", async () => {

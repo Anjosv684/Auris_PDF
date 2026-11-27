@@ -4,12 +4,14 @@ import { flatten } from "./actions";
 import { getDoc } from "./docs";
 import { isApp, ocrNative } from "./platform";
 import type { Tab } from "./types";
+import { track } from "./telemetry";
 
 export async function ocrTab(force = false): Promise<void> {
   const st = useStore.getState();
   const t = getActiveTab();
   if (!t) return;
   if (!isApp) return st.toast("O reconhecimento de texto (OCR) está disponível no app instalado.", "info");
+  track("ocr");
   st.set({ busy: "Preparando o reconhecimento de texto…" });
   try {
     const bytes = await flatten(); // grava anotações/formulários antes

@@ -2,6 +2,7 @@ import { RotateCcw, RotateCw, X } from "lucide-react";
 import { useStore, useActiveTab, getActiveTab, runTask } from "../lib/store";
 import { buildPdf } from "../lib/export";
 import { applyOrganize } from "../lib/pages";
+import { track } from "../lib/telemetry";
 
 export function setPageBar(on: boolean) {
   localStorage.setItem("auris.pagebar", on ? "1" : "0");
@@ -12,6 +13,7 @@ export function setPageBar(on: boolean) {
 export async function rotateDocument(delta: 90 | -90) {
   const t = getActiveTab();
   if (!t) return;
+  track("girar_documento");
   await runTask("Girando o documento…", async () => {
     const base = await buildPdf(t); // anotações e formulários giram junto com a página
     const items = Array.from({ length: t.pageCount }, (_, i) => ({ kind: "page" as const, index: i, rot: delta, key: String(i) }));
