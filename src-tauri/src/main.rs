@@ -250,6 +250,111 @@ async fn pdf_to_word(app: tauri::AppHandle, request: Request<'_>) -> Result<Resp
     .map_err(|e| e.to_string())?
 }
 
+// ------------------------------------------------------------------ edição de texto (motor em modo servidor)
+// O motor fica aberto enquanto o usuário edita: cada edição leva ~0,2 s em vez de ~3 s.
+struct EngineProc {
+    child: std::process::Child,
+    stdin: std::process::ChildStdin,
+    stdout: std::io::BufReader<std::process::ChildStdout>,
+}
+static ENGINE: std::sync::OnceLock<Mutex<Option<EngineProc>>> = std::sync::OnceLock::new();
+
+fn engine_spawn() -> Result<EngineProc, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let engine = exe.with_file_name(if cfg!(windows) { "auris-compress.exe" } else { "auris-compress" });
+    if !engine.is_file() {
+        return Err("Motor de PDF não encontrado. Reinstale o Auris PDF.".into());
+    }
+    let mut cmd = std::process::Command::new(&engine);
+    cmd.arg("serve").stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped());
+    #[cfg(windows)]
+    hidden(&mut cmd);
+    let mut child = cmd.spawn().map_err(|e| format!("Falha ao iniciar o motor de PDF: {e}"))?;
+    let stdin = child.stdin.take().ok_or("sem stdin")?;
+    let stdout = std::io::BufReader::new(child.stdout.take().ok_or("sem stdout")?);
+    Ok(EngineProc { child, stdin, stdout })
+}
+
+/// Envia uma requisição JSON ao motor (abrindo-o se preciso) e devolve a resposta.
+fn engine_request(req: &serde_json::Value) -> Result<serde_json::Value, String> {
+    use std::io::{BufRead, Write};
+    let mut guard = ENGINE.get_or_init(|| Mutex::new(None)).lock().map_err(|_| "Motor ocupado".to_string())?;
+    for _ in 0..2 {
+        if guard.is_none() {
+            *guard = Some(engine_spawn()?);
+        }
+        let p = guard.as_mut().unwrap();
+        let mut line = String::new();
+        let ok = writeln!(p.stdin, "{req}").is_ok() && p.stdin.flush().is_ok() && p.stdout.read_line(&mut line).map(|n| n > 0).unwrap_or(false);
+        if ok {
+            let v: serde_json::Value = serde_json::from_str(line.trim()).map_err(|e| format!("Resposta inválida do motor: {e}"))?;
+            if let Some(e) = v.get("erro").and_then(|e| e.as_str()) {
+                return Err(if e.contains("senha") { "PDF protegido por senha.".into() } else { e.to_string() });
+            }
+            return Ok(v);
+        }
+        // o motor caiu: descarta e tenta de novo uma vez
+        if let Some(mut dead) = guard.take() {
+            let _ = dead.child.kill();
+        }
+    }
+    Err("O motor de PDF parou de responder.".into())
+}
+
+fn temp_pdf(tag: &str) -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    std::env::temp_dir().join(format!("auris-{tag}-{nanos}.pdf"))
+}
+
+/// Abre o motor antes da primeira edição (chamado ao escolher a ferramenta).
+#[tauri::command]
+async fn engine_warmup() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| engine_request(&serde_json::json!({ "cmd": "ping" })).map(|_| ()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Linhas de texto de todas as páginas (texto, caixa, tamanho, negrito, família, cor).
+#[tauri::command]
+async fn text_lines(request: Request<'_>) -> Result<serde_json::Value, String> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let input = temp_pdf("lines");
+        std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
+        let r = engine_request(&serde_json::json!({ "cmd": "lines", "in": input }));
+        let _ = std::fs::remove_file(&input);
+        r.map(|v| v.get("pages").cloned().unwrap_or(serde_json::Value::Null))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Aplica edições de texto. Corpo: PDF. Cabeçalho `edits`: JSON url-encoded
+/// `[{page, rect:[x0,y0,x1,y1], text, size?, bold?}]`. Resposta: PDF editado.
+#[tauri::command]
+async fn edit_text(request: Request<'_>) -> Result<Response, String> {
+    let raw = request.headers().get("edits").and_then(|v| v.to_str().ok()).ok_or("Edições ausentes")?;
+    let edits: serde_json::Value = serde_json::from_str(&urlencoding::decode(raw).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let (input, output) = (temp_pdf("edit-in"), temp_pdf("edit-out"));
+        std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
+        let r = engine_request(&serde_json::json!({ "cmd": "edit", "in": input, "out": output, "edits": edits }));
+        let _ = std::fs::remove_file(&input);
+        let pdf = r.and_then(|_| std::fs::read(&output).map_err(|e| e.to_string()));
+        let _ = std::fs::remove_file(&output);
+        pdf.map(Response::new)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 // ------------------------------------------------------------------ compressão (motor PyMuPDF)
 /// Roda o motor `auris-compress.exe` (sidecar instalado ao lado do app).
 /// Corpo: bytes do PDF. Cabeçalhos: `level` (leve|media|forte) e `gray` (0|1).
@@ -575,6 +680,9 @@ fn main() {
             compress_pdf,
             ocr_pdf,
             pdf_to_word,
+            engine_warmup,
+            text_lines,
+            edit_text,
             list_printers,
             printer_caps,
             printer_preferences,

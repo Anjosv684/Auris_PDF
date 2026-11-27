@@ -29,6 +29,7 @@ Leitor e editor de PDF para Windows, no visual Auris. Tudo roda localmente: nenh
 - Imprimir todas as abas abertas de uma vez
 
 **Editar**
+- **Texto original do PDF**: ferramenta "Editar texto" (X). Clique numa linha, altere e aperte Enter (Shift+Enter quebra linha, Esc cancela). Mantém posição, tamanho, cor e negrito/itálico.
 - Destaque: selecione o texto e clique no marcador, ou arraste
 - Caixa de texto, desenho à mão livre, retângulo, elipse, linha e seta, com cor, espessura, preenchimento e opacidade
 - **Imagens**: Ctrl+V (prints, logos), arrastar arquivo para a página ou botão Inserir
@@ -101,8 +102,7 @@ Estrutura:
 - `compressor/`: motor de compressão (Python + PyMuPDF), empacotado como `auris-compress.exe`
 
 ## Limitações conhecidas
-- Editar o **texto original** do PDF ainda não é possível. Para corrigir um trecho, cubra com um retângulo branco e escreva por cima.
-- **OCR** e **conversão para Word** ainda não estão incluídos (próxima fase).
+- Na edição do texto original, a linha é reescrita com a fonte padrão mais parecida (Helvetica/Arial, Times ou Courier). Fontes especiais do documento (de marca, manuscritas) não são reproduzidas. Páginas escaneadas precisam de OCR e, mesmo assim, o texto delas não é editável (é uma foto).
 - As anotações são gravadas "achatadas" no conteúdo da página, e o arquivo fica igual em qualquer leitor.
 - Sobre a assinatura digital:
   - a assinatura gerada é PAdES (ETSI.CAdES.detached, com SHA-256 e o atributo *signing-certificate-v2*), aceita pelo Adobe e pelo validador do ITI

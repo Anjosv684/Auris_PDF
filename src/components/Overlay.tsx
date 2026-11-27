@@ -5,6 +5,7 @@ import type { Obj, TextObj } from "../lib/types";
 import { uid } from "../lib/util";
 import { viewerApi } from "../lib/viewerApi";
 import { FeatureIcon } from "./icons";
+import { TextEditLayer } from "./TextEditLayer";
 
 const CREATE_TOOLS = new Set(["highlight", "rect", "ellipse", "line", "arrow", "ink", "text"]);
 const STICKY = new Set(["ink", "highlight"]);
@@ -246,6 +247,7 @@ export const Overlay = memo(function Overlay({ page, w, h }: { page: number; w: 
           <polyline points={ink.join(" ")} fill="none" stroke={useStore.getState().style.stroke} strokeWidth={useStore.getState().style.strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
+      {tool === "edittext" && <TextEditLayer page={page} w={w} h={h} />}
       {guides.v.map((v, i) => <div key={"v" + i} className="guide v" style={{ left: pct(v, w) }} />)}
       {guides.h.map((v, i) => <div key={"h" + i} className="guide h" style={{ top: pct(v, h) }} />)}
     </div>

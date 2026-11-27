@@ -9,7 +9,7 @@ Pedidos de clientes (suporte Aliança Tur, 27/11/2026):
 - [x] **Converter PDF para Word (.docx)**: mantém texto, tabelas e imagens; páginas escaneadas passam por OCR antes. Botão na barra e cartão na tela inicial; o .docx abre direto no Word.
 - [x] **Converter foto para PDF**: a função já existia ("Imagens → PDF"); agora tem botão na barra e "Converter em PDF com Auris PDF" no botão direito sobre fotos no Explorer.
 - [x] **Digitalizar / OCR**: transformar PDF escaneado em PDF pesquisável (texto selecionável e com busca). Botão "OCR" na barra, cartão na tela inicial e aviso automático quando o PDF aberto parece escaneado.
-- [ ] **Editar os textos do PDF**: clicar num texto existente e alterar.
+- [x] **Editar os textos do PDF**: ferramenta "Editar texto" (tecla X): clique numa linha, altere e aperte Enter. Mantém posição, tamanho, cor e negrito/itálico; dá para desfazer (Ctrl+Z).
 
 ## Ideias para depois
 

@@ -409,3 +409,10 @@ svg.lucide { stroke-width: 1.75; flex: none; }
 .ocr-hint { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; font-size: 13px; color: var(--text);
   background: rgba(142,194,255,.08); border-bottom: 1px solid rgba(142,194,255,.16); }
 .ocr-hint span { flex: 1; min-width: 0; color: var(--text-2); }
+
+/* ---------------- editar texto do PDF ---------------- */
+.te-layer { position: absolute; inset: 0; pointer-events: none; }
+.te-line { position: absolute; pointer-events: auto; cursor: text; border-radius: 2px; outline: 1px dashed rgba(47,128,237,.22); transition: background .1s; }
+.te-line:hover { background: rgba(47,128,237,.12); outline: 1.5px solid var(--blue-2); }
+.te-input { position: absolute; pointer-events: auto; z-index: 2; margin: 0; padding: 0 2px; border: none; outline: 2px solid var(--blue-2); border-radius: 2px;
+  background: #fff; resize: none; overflow: hidden; line-height: 1.2; white-space: pre; box-shadow: 0 4px 16px rgba(0,0,0,.25); }

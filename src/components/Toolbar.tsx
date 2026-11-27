@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  FolderOpen, Save, FilePenLine, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
+  FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
+import { isApp } from "../lib/platform";
 import { FeatureIcon } from "./icons";
 import { ocrTab } from "../lib/ocr";
 import { exportWord } from "../lib/word";
@@ -43,6 +44,7 @@ const TOOLS: { t: Tool; icon: React.ReactNode; title: string; key?: string }[] =
   { t: "ellipse", icon: <Circle size={17} />, title: "Elipse (E)", key: "e" },
   { t: "line", icon: <Minus size={17} style={{ transform: "rotate(-45deg)" }} />, title: "Linha (L)", key: "l" },
   { t: "arrow", icon: <MoveUpRight size={17} />, title: "Seta (A)", key: "a" },
+  ...(isApp ? [{ t: "edittext" as Tool, icon: <TextCursorInput size={17} />, title: "Editar o texto do PDF (X): clique numa linha para alterar", key: "x" }] : []),
 ];
 export const TOOL_KEYS = Object.fromEntries(TOOLS.filter((x) => x.key).map((x) => [x.key!, x.t]));
 

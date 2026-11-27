@@ -4,6 +4,7 @@ Uso:
   auris-compress <entrada.pdf> <saida.pdf> <leve|media|forte> <cinza 0|1>
   auris-compress ocr <entrada.pdf> <saida.pdf> <pasta-tessdata> [forcar 0|1]
   auris-compress word <entrada.pdf> <saida.docx> [pasta-tessdata]
+  auris-compress serve      (edição de texto: JSON por linha no stdin/stdout)
 
 Durante o trabalho imprime linhas "PROGRESSO <feitas> <total>".
 No fim imprime uma linha JSON com o resultado, ou {"erro": "..."} com código de saída 1.
@@ -18,10 +19,38 @@ def progresso(feitas: int, total: int):
     print(f"PROGRESSO {feitas} {total}", flush=True)
 
 
+def servir() -> int:
+    """Modo servidor: uma requisição JSON por linha no stdin, uma resposta JSON por linha no stdout.
+    Fica aberto enquanto o usuário edita (evita os ~3 s de abertura a cada edição)."""
+    sys.stdin.reconfigure(encoding="utf-8")
+    for linha in sys.stdin:
+        if not linha.strip():
+            continue
+        try:
+            req = json.loads(linha)
+            cmd = req.get("cmd")
+            if cmd == "edit":
+                from edit_text import editar
+                r = editar(req["in"], req["out"], req["edits"])
+            elif cmd == "lines":
+                from edit_text import todas_linhas
+                r = {"pages": todas_linhas(req["in"])}
+            elif cmd == "ping":
+                r = {"ok": True}
+            else:
+                r = {"erro": f"Comando desconhecido: {cmd}"}
+        except Exception as e:  # noqa: BLE001
+            r = {"erro": str(e) or e.__class__.__name__}
+        print(json.dumps(r, ensure_ascii=False), flush=True)
+    return 0
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
         args = sys.argv[1:]
+        if args and args[0] == "serve":
+            return servir()
         if args and args[0] == "word":
             entrada, saida = args[1:3]
             tessdata = args[3] if len(args) > 3 and args[3] else None

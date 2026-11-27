@@ -55,7 +55,8 @@ export type Tool =
   | "line"
   | "arrow"
   | "ink"
-  | "text";
+  | "text"
+  | "edittext";
 
 export type Tab = {
   id: string;

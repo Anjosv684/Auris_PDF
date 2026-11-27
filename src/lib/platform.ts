@@ -237,3 +237,21 @@ export async function openPath(path: string) {
   const { invoke } = await tauri();
   await invoke("open_path", { path });
 }
+
+// ---------- edição do texto original (motor em modo servidor) ----------
+export type TextLine = { text: string; bbox: [number, number, number, number]; size: number; bold: boolean; italic: boolean; family: "sans" | "serif" | "mono"; color: string };
+export type TextEdit = { page: number; rect: [number, number, number, number]; text: string };
+
+export async function engineWarmup() {
+  const { invoke } = await tauri();
+  await invoke("engine_warmup").catch(() => {});
+}
+/** Linhas de texto de todas as páginas (uma lista por página). */
+export async function textLines(bytes: Uint8Array): Promise<TextLine[][]> {
+  const { invoke } = await tauri();
+  return (await invoke<TextLine[][] | null>("text_lines", bytes)) ?? [];
+}
+export async function editTextNative(bytes: Uint8Array, edits: TextEdit[]): Promise<Uint8Array> {
+  const { invoke } = await tauri();
+  return new Uint8Array(await invoke<ArrayBuffer>("edit_text", bytes, { headers: { edits: encodeURIComponent(JSON.stringify(edits)) } }));
+}
