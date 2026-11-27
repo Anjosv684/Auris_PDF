@@ -15,15 +15,22 @@ type PasswordAsker = (retry: boolean) => Promise<string | null>;
 let askPassword: PasswordAsker = async () => null;
 export const setPasswordAsker = (fn: PasswordAsker) => (askPassword = fn);
 
+// senha usada para abrir cada documento (repassada à impressão nativa)
+const passwords = new WeakMap<PDFDoc, string>();
+export const passwordOf = (pdf: PDFDoc) => passwords.get(pdf);
+
 export async function openPdf(bytes: Uint8Array): Promise<PDFDoc> {
   // o pdf.js transfere o buffer para o worker; mandamos uma cópia
   const task = pdfjsLib.getDocument({ data: bytes.slice(), isEvalSupported: false, enableXfa: false });
+  let used: string | undefined;
   task.onPassword = async (update: (p: string) => void, reason: number) => {
     const pwd = await askPassword(reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD);
     if (pwd === null) task.destroy();
-    else update(pwd);
+    else update((used = pwd));
   };
-  return task.promise;
+  const pdf = await task.promise;
+  if (used !== undefined) passwords.set(pdf, used);
+  return pdf;
 }
 
 /** Renderiza uma página em canvas (miniaturas, impressão, exportar imagem). */

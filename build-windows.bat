@@ -14,6 +14,22 @@ set "TAURI_SIGNING_PRIVATE_KEY_PASSWORD="
 echo [1/3] Instalando dependencias...
 call npm install || goto erro
 
+rem Motor de impressao (PDFium, licenca BSD/Apache) - baixado uma vez
+if not exist "src-tauri\resources\pdfium.dll" (
+  echo Baixando o motor de impressao PDFium...
+  if not exist "src-tauri\resources" mkdir "src-tauri\resources"
+  powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8179/pdfium-win-x64.tgz' -OutFile '%TEMP%\pdfium-win-x64.tgz'" || goto erro
+  if not exist "%TEMP%\pdfium-x64" mkdir "%TEMP%\pdfium-x64"
+  tar -xzf "%TEMP%\pdfium-win-x64.tgz" -C "%TEMP%\pdfium-x64" || goto erro
+  copy /y "%TEMP%\pdfium-x64\bin\pdfium.dll" "src-tauri\resources\pdfium.dll" >nul || goto erro
+)
+
+rem Motor de compressao (PyMuPDF) - precisa do Python
+if not exist "src-tauri\binaries\auris-compress-x86_64-pc-windows-msvc.exe" (
+  where python >nul 2>nul || (echo [ERRO] Instale o Python 3 para gerar o motor de compressao & pause & exit /b 1)
+  call compressor\build.bat || goto erro
+)
+
 echo [2/3] Gerando o app (a primeira vez demora ~5-10 min)...
 call npx tauri build || goto erro
 

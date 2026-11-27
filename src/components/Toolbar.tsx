@@ -74,7 +74,7 @@ export function Toolbar() {
     <div className="toolbar">
       <button className="ib" title="Abrir (Ctrl+O)" onClick={openFiles}><FolderOpen size={17} /></button>
       <button className="ib" title="Salvar (Ctrl+S)" onClick={() => saveTab()} disabled={!tab}><Save size={17} /></button>
-      <button className="ib" title="Imprimir (Ctrl+P)" onClick={printTab} disabled={!tab}><Printer size={17} /></button>
+      <button className="ib" title={"Imprimir (Ctrl+P)\nImpressão rápida: Ctrl+Shift+P"} onClick={printTab} disabled={!tab}><Printer size={17} /></button>
       <div className="sep" />
       <button className="ib" title="Desfazer (Ctrl+Z)" onClick={s.undo} disabled={!tab?.past.length}><Undo2 size={17} /></button>
       <button className="ib" title="Refazer (Ctrl+Y)" onClick={s.redo} disabled={!tab?.future.length}><Redo2 size={17} /></button>

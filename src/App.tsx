@@ -7,6 +7,8 @@ import { Organize } from "./components/Organize";
 import { Home } from "./components/Home";
 import { Dialogs } from "./components/Dialogs";
 import { UpdateUI } from "./components/UpdateUI";
+import { PrintJobs } from "./components/PrintJobs";
+import { quickPrint, openPrint } from "./lib/print";
 import { Tooltip } from "./components/Tooltip";
 import { startAutoCheck } from "./lib/updater";
 import { setPasswordAsker } from "./lib/pdfjs";
@@ -48,6 +50,8 @@ export default function App() {
   useEffect(() => {
     let mergeBuf: string[] = [];
     let mergeTimer = 0;
+    let printBuf: string[] = [];
+    let printTimer = 0;
     const handle = async (l: Launch) => {
       if (l.action === "abrir") return openPaths(l.paths);
       if (l.action === "comprimir") {
@@ -55,6 +59,17 @@ export default function App() {
         const cur = useStore.getState().dialog;
         if (cur?.kind === "compress" && cur.files) useStore.getState().openDialog({ kind: "compress", files: [...cur.files, ...files] });
         else useStore.getState().openDialog({ kind: "compress", files });
+        return;
+      }
+      if (l.action === "imprimir") {
+        printBuf.push(...l.paths);
+        clearTimeout(printTimer);
+        printTimer = window.setTimeout(async () => {
+          const files = await Promise.all(printBuf.map(readPath));
+          printBuf = [];
+          const cur = useStore.getState().dialog;
+          openPrint(cur?.kind === "print" && cur.files ? [...cur.files, ...files] : files);
+        }, 700);
         return;
       }
       if (l.action === "juntar") {
@@ -105,7 +120,7 @@ export default function App() {
       }
       if (!t) return;
       if (ctrl && k === "s") { e.preventDefault(); saveTab(e.shiftKey); return; }
-      if (ctrl && k === "p") { e.preventDefault(); printTab(); return; }
+      if (ctrl && k === "p") { e.preventDefault(); e.shiftKey ? quickPrint() : printTab(); return; }
       if (ctrl && k === "w") { e.preventDefault(); closeTabSafe(t.id); return; }
       if (st.view !== "doc") return;
       if (ctrl && k === "f") { e.preventDefault(); st.set({ search: true }); return; }
@@ -219,6 +234,7 @@ export default function App() {
       <Dialogs />
       <Toasts />
       <UpdateUI />
+      <PrintJobs />
       <Tooltip />
       {dragging && <div className="dropzone-overlay">Solte para abrir</div>}
     </div>

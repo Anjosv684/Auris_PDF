@@ -8,7 +8,16 @@ Leitor e editor de PDF para Windows, no visual Auris. Tudo roda localmente: nenh
 - Abas, miniaturas, rolagem contínua e zoom suave (Ctrl + roda do mouse)
 - Busca com destaque (Ctrl+F), seleção e cópia de texto, links internos
 - PDFs com senha
-- Impressão (Ctrl+P)
+
+**Imprimir**
+- Impressão nativa e vetorial direto no spooler do Windows, sem a janela de impressão do navegador
+- Diálogo próprio (Ctrl+P): impressora com status, páginas (todas, atual ou intervalo "1-3, 5, 8-"), cópias e agrupar, frente e verso, colorido ou P&B, orientação automática por página, dimensionamento (ajustar, tamanho real, reduzir só páginas grandes ou %)
+- Pré-visualização ao vivo, que acompanha orientação, escala e P&B
+- "Preferências da impressora…" abre o diálogo do próprio driver (papel, bandeja, qualidade)
+- O trabalho roda em segundo plano, com progresso e botão Cancelar; dá para continuar editando
+- Impressão rápida (Ctrl+Shift+P) na última impressora e configuração usadas
+- Lembra a última impressora e as opções de cada impressora
+- Imprimir todas as abas abertas de uma vez
 
 **Editar**
 - Destaque: selecione o texto e clique no marcador, ou arraste
@@ -39,7 +48,7 @@ Leitor e editor de PDF para Windows, no visual Auris. Tudo roda localmente: nenh
 **Windows**
 - Registrado para abrir `.pdf`. Em Configurações (⚙) → "Definir como leitor padrão" abre a tela do Windows; é um clique.
 - Dois cliques em outro PDF abrem numa nova aba da janela que já está aberta
-- Menu do botão direito do Explorer: *Abrir*, *Comprimir* e *Juntar com Auris PDF* (funciona com vários arquivos selecionados)
+- Menu do botão direito do Explorer: *Abrir*, *Comprimir*, *Juntar* e *Imprimir com Auris PDF* (funciona com vários arquivos selecionados)
 
 ## Como gerar o instalador
 
@@ -49,7 +58,8 @@ Leitor e editor de PDF para Windows, no visual Auris. Tudo roda localmente: nenh
    - **Rust**: https://rustup.rs
    - **Visual Studio Build Tools** com "Desenvolvimento para desktop com C++" (o instalador do Rust oferece)
 2. Dê dois cliques em `build-windows.bat`.
-3. O instalador sai em `src-tauri\target\release\bundle\nsis\Auris PDF_1.0.0_x64-setup.exe`, com cerca de 10 MB.
+3. O instalador sai em `src-tauri\target\release\bundle\nsis\`, com cerca de 33 MB.
+   O script baixa sozinho o PDFium e gera o motor de compressão (precisa do **Python 3**).
 
 ### Opção B: no GitHub, sem instalar nada
 1. Suba esta pasta num repositório (pode ser privado).
@@ -78,6 +88,8 @@ Estrutura:
   - arquivos em disco
   - associação de arquivos e instância única
   - certificados do Windows via `SignedCms`
+  - `print.rs`: impressão nativa (PDFium → GDI/spooler)
+- `compressor/`: motor de compressão (Python + PyMuPDF), empacotado como `auris-compress.exe`
 
 ## Limitações conhecidas
 - Editar o **texto original** do PDF ainda não é possível. Para corrigir um trecho, cubra com um retângulo branco e escreva por cima.
@@ -87,7 +99,11 @@ Estrutura:
   - a assinatura gerada é PAdES (ETSI.CAdES.detached, com SHA-256 e o atributo *signing-certificate-v2*), aceita pelo Adobe e pelo validador do ITI
   - não inclui carimbo do tempo de ACT nem o identificador de política ICP-Brasil (AD-RB), que ficam para uma versão futura
   - após assinar, qualquer edição invalida a assinatura
+- Na impressão, o texto sai vetorial e nítido em qualquer zoom, mas como contornos: ao imprimir na "Microsoft Print to PDF", o texto do arquivo gerado não é selecionável. A versão pré-compilada do PDFium não inclui a saída de texto nativa do GDI.
 
 ## Licenças de terceiros
-PDF.js (Apache-2.0), pdf-lib (MIT), node-forge (BSD-3), React (MIT), Tauri (MIT/Apache-2.0), lucide (ISC).
+PDF.js (Apache-2.0), pdf-lib (MIT), node-forge (BSD-3), React (MIT), Tauri (MIT/Apache-2.0), lucide (ISC),
+PDFium (BSD-3 / Apache-2.0; binário de https://github.com/bblanchon/pdfium-binaries, MIT).
 Todas permitem uso comercial.
+
+**Atenção:** o motor de compressão usa o **PyMuPDF (AGPL-3.0)**. O uso interno é livre. Para vender o Auris PDF como produto de código fechado, é preciso a licença comercial da Artifex ou trocar esse motor.

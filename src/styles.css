@@ -372,3 +372,27 @@ button { cursor: pointer; }
   background: #031a33; color: #fff; font-size: 12px; line-height: 1.35; white-space: pre-line; text-align: center;
   border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: fade .12s ease;
 }
+
+/* ---------------- impressão ---------------- */
+.print-modal { width: min(980px, calc(100vw - 32px)); height: min(680px, calc(100vh - 48px)); }
+.print-body { flex: 1; min-height: 0; display: flex; gap: 18px; padding: 8px 18px; }
+.print-opts { width: 340px; flex: none; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.print-opts select, .print-opts input[type=text], .print-opts input[type=number] {
+  height: 34px; padding: 0 10px; background: var(--glass); color: var(--text); border: 1px solid var(--line); border-radius: 8px; outline: none; min-width: 0;
+}
+.print-opts select:focus, .print-opts input:focus { border-color: var(--blue-2); }
+.print-opts select option { background: #0b3159; }
+.print-opts .seg button:disabled { opacity: .35; cursor: not-allowed; }
+.link-btn { background: none; border: none; color: var(--blue-3); font-size: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; cursor: pointer; align-self: flex-start; }
+.link-btn:hover { text-decoration: underline; }
+.print-preview { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,.22); border-radius: 12px; padding: 14px; }
+.paper-wrap { flex: 1; min-height: 0; display: grid; place-items: center; container-type: size; }
+.paper { position: relative; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.45); max-width: 100cqw; max-height: 100cqh; overflow: hidden; }
+.paper .printable { position: absolute; outline: 1px dashed rgba(24,95,165,.35); pointer-events: none; }
+.paper img { position: absolute; display: block; user-select: none; }
+.print-jobs { position: fixed; left: 18px; bottom: 18px; z-index: 190; display: flex; flex-direction: column; gap: 8px; width: 300px; }
+.print-job { display: flex; align-items: flex-start; gap: 10px; padding: 10px 8px 10px 12px; border-radius: 12px; background: var(--navy-700); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: slideIn .2s ease; }
+.print-job .ic { flex: none; margin-top: 2px; color: var(--blue-3); }
+.print-job .ic.ok { color: var(--green); } .print-job .ic.err { color: var(--red); }
+.print-job .txt { flex: 1; min-width: 0; }
+.print-job .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

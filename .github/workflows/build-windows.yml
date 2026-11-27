@@ -37,6 +37,14 @@ jobs:
       - name: Motor de compressão (PyMuPDF)
         shell: cmd
         run: call compressor\build.bat
+      - name: Motor de impressão (PDFium)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force src-tauri/resources | Out-Null
+          Invoke-WebRequest -Uri https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8179/pdfium-win-x64.tgz -OutFile pdfium.tgz
+          New-Item -ItemType Directory -Force pdfium | Out-Null
+          tar -xzf pdfium.tgz -C pdfium
+          Copy-Item pdfium/bin/pdfium.dll src-tauri/resources/pdfium.dll
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:

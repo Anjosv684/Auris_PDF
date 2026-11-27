@@ -11,6 +11,7 @@ export type Dialog =
   | { kind: "sign" }
   | { kind: "signature-pad" }
   | { kind: "password"; retry: boolean; resolve: (p: string | null) => void }
+  | { kind: "print"; files?: { name: string; bytes: Uint8Array }[] }
   | { kind: "about" };
 
 export type Toast = { id: string; text: string; kind: "ok" | "err" | "info" };

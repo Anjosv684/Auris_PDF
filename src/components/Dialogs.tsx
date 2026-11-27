@@ -11,6 +11,7 @@ import { signerFromPfx, signerFromStore, signPdf, describeCert, certFromDer, typ
 import { getDoc } from "../lib/docs";
 import { openPdf } from "../lib/pdfjs";
 import { appVersion, checkForUpdate } from "../lib/updater";
+import { PrintDialog } from "./PrintDialog";
 import type { CertInfo, Tab } from "../lib/types";
 
 function Modal({ title, children, foot, wide, onClose }: { title: React.ReactNode; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
@@ -46,6 +47,7 @@ export function Dialogs() {
     case "sign": return <SignDialog />;
     case "signature-pad": return <SignaturePadDialog />;
     case "password": return <PasswordDialog d={d} />;
+    case "print": return <PrintDialog d={d} />;
     case "about": return <AboutDialog />;
   }
 }

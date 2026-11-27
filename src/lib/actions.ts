@@ -6,7 +6,6 @@ import type { Obj, StampObj } from "./types";
 import { buildPdf } from "./export";
 import { isApp, pickFiles, readPath, saveAs, writePath } from "./platform";
 import { getDoc, dropDoc } from "./docs";
-import { openPdf, renderPage } from "./pdfjs";
 
 const st = () => useStore.getState();
 
@@ -190,32 +189,11 @@ export async function flatten(): Promise<Uint8Array | undefined> {
   return bytes;
 }
 
+/** Ctrl+P / botão Imprimir: diálogo nativo no app, impressão do navegador fora dele. */
 export async function printTab() {
-  const t = getActiveTab();
-  if (!t) return;
-  await runTask("Preparando impressão…", async () => {
-    const bytes = await buildPdf(t);
-    const pdf = await openPdf(bytes);
-    const root = document.getElementById("print-root")!;
-    root.innerHTML = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      st().set({ busy: `Preparando impressão… ${i}/${pdf.numPages}` });
-      const c = await renderPage(pdf, i, { scale: 2 });
-      const img = document.createElement("img");
-      img.src = c.toDataURL("image/jpeg", 0.92);
-      root.append(img);
-      c.width = c.height = 0;
-    }
-    await pdf.destroy();
-    await Promise.all([...root.querySelectorAll("img")].map((i) => i.decode().catch(() => {})));
-    st().set({ busy: null });
-    const done = () => {
-      root.innerHTML = "";
-      window.removeEventListener("afterprint", done);
-    };
-    window.addEventListener("afterprint", done);
-    window.print();
-  });
+  if (!getActiveTab()) return;
+  const { openPrint } = await import("./print");
+  return openPrint();
 }
 
 export function closeTabSafe(id: string) {

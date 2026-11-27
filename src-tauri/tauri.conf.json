@@ -73,7 +73,10 @@
     "createUpdaterArtifacts": true,
     "externalBin": [
       "binaries/auris-compress"
-    ]
+    ],
+    "resources": {
+      "resources/pdfium.dll": "pdfium.dll"
+    }
   },
   "plugins": {
     "updater": {

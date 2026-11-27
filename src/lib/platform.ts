@@ -93,7 +93,7 @@ export async function saveMany(files: { name: string; bytes: Uint8Array }[], zip
 }
 
 // ---------- integração com o Windows ----------
-export type Launch = { action: "abrir" | "comprimir" | "juntar"; paths: string[] };
+export type Launch = { action: "abrir" | "comprimir" | "juntar" | "imprimir"; paths: string[] };
 
 export async function takeLaunch(): Promise<Launch[]> {
   if (!isApp) return [];
@@ -149,4 +149,56 @@ export async function compressNative(bytes: Uint8Array, level: "Leve" | "Média"
   const lv = { Leve: "leve", Média: "media", Forte: "forte" }[level];
   const buf = new Uint8Array(await invoke<ArrayBuffer>("compress_pdf", bytes, { headers: { level: lv, gray: gray ? "1" : "0" } }));
   return { mode: (["normal", "imagem", "original"] as const)[buf[0]] ?? "normal", bytes: buf.subarray(1) };
+}
+
+// ---------- impressão nativa (PDFium + spooler do Windows) ----------
+export type PrinterInfo = { name: string; port: string; isDefault: boolean; status: string; ready: boolean };
+export type PrinterCaps = {
+  duplex: boolean; color: boolean;
+  paperW: number; paperH: number; // pontos, retrato
+  marginL: number; marginT: number; marginR: number; marginB: number;
+};
+export type Duplex = "none" | "long" | "short";
+export type Orientation = "auto" | "portrait" | "landscape";
+export type Scaling = "fit" | "actual" | "shrink" | "custom";
+export type NativePrintOptions = {
+  pages?: number[]; copies: number; collate: boolean; duplex: Duplex; gray: boolean;
+  orientation: Orientation; scaling: Scaling; scale: number; devmode?: string | null;
+  jobName: string; password?: string | null;
+};
+export type PrinterPrefs = { devmode: string; duplex: Duplex | "keep"; gray: boolean; orientation: "landscape" | "keep" };
+export type PrintEvent = { job: string; page: number; total: number; message?: string | null };
+
+export async function listPrinters(): Promise<PrinterInfo[]> {
+  const { invoke } = await tauri();
+  return invoke<PrinterInfo[]>("list_printers");
+}
+export async function printerCaps(p: PrinterInfo, devmode?: string | null): Promise<PrinterCaps> {
+  const { invoke } = await tauri();
+  return invoke<PrinterCaps>("printer_caps", { name: p.name, port: p.port, devmode: devmode ?? null });
+}
+/** Abre as preferências do driver da impressora. null = cancelado. */
+export async function printerPreferences(name: string, devmode?: string | null): Promise<PrinterPrefs | null> {
+  const { invoke } = await tauri();
+  return invoke<PrinterPrefs | null>("printer_preferences", { name, devmode: devmode ?? null });
+}
+/** Envia o trabalho e retorna na hora; o progresso chega pelos eventos. */
+export async function printNative(job: string, printer: string, opts: NativePrintOptions, bytes: Uint8Array) {
+  const { invoke } = await tauri();
+  await invoke("print_pdf", bytes, {
+    headers: { job: encodeURIComponent(job), printer: encodeURIComponent(printer), options: encodeURIComponent(JSON.stringify(opts)) },
+  });
+}
+export async function cancelPrint(job: string) {
+  const { invoke } = await tauri();
+  return invoke<boolean>("cancel_print", { job });
+}
+export async function onPrintEvents(h: { progress: (e: PrintEvent) => void; done: (e: PrintEvent) => void; error: (e: PrintEvent) => void }) {
+  const { listen } = await import("@tauri-apps/api/event");
+  const un = await Promise.all([
+    listen<PrintEvent>("print-progress", (e) => h.progress(e.payload)),
+    listen<PrintEvent>("print-done", (e) => h.done(e.payload)),
+    listen<PrintEvent>("print-error", (e) => h.error(e.payload)),
+  ]);
+  return () => un.forEach((f) => f());
 }

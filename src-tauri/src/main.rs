@@ -3,6 +3,8 @@
 // app padrão) e assinatura com certificados do repositório do Windows (A1/A3).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod print;
+
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -17,7 +19,7 @@ struct Launch {
 
 struct Pending(Mutex<Vec<Launch>>);
 
-/// Interpreta a linha de comando: `AurisPDF.exe [--comprimir|--juntar] arquivo.pdf ...`
+/// Interpreta a linha de comando: `AurisPDF.exe [--comprimir|--juntar|--imprimir] arquivo.pdf ...`
 fn parse_args(args: &[String], cwd: Option<&str>) -> Option<Launch> {
     let mut action = "abrir".to_string();
     let mut paths = vec![];
@@ -25,6 +27,7 @@ fn parse_args(args: &[String], cwd: Option<&str>) -> Option<Launch> {
         match a.as_str() {
             "--comprimir" => action = "comprimir".into(),
             "--juntar" => action = "juntar".into(),
+            "--imprimir" => action = "imprimir".into(),
             s if s.starts_with("--") || s.starts_with("-psn") => {}
             s => {
                 let mut p = PathBuf::from(s);
@@ -171,6 +174,107 @@ async fn compress_pdf(request: Request<'_>) -> Result<Response, String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+// ------------------------------------------------------------------ impressão nativa (PDFium)
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PrintEvent {
+    job: String,
+    page: u32,
+    total: u32,
+    message: Option<String>,
+}
+
+#[tauri::command]
+async fn list_printers() -> Result<Vec<print::PrinterInfo>, String> {
+    #[cfg(windows)]
+    return tauri::async_runtime::spawn_blocking(print::list_printers).await.map_err(|e| e.to_string())?;
+    #[cfg(not(windows))]
+    Err("Impressão nativa disponível apenas no Windows.".into())
+}
+
+#[tauri::command]
+async fn printer_caps(name: String, port: String, devmode: Option<String>) -> Result<print::PrinterCaps, String> {
+    #[cfg(windows)]
+    return tauri::async_runtime::spawn_blocking(move || print::printer_caps(&name, &port, devmode))
+        .await
+        .map_err(|e| e.to_string())?;
+    #[cfg(not(windows))]
+    {
+        let _ = (name, port, devmode);
+        Err("Impressão nativa disponível apenas no Windows.".into())
+    }
+}
+
+/// Abre o diálogo de preferências do driver. Retorna None se o usuário cancelar.
+#[tauri::command]
+async fn printer_preferences(window: tauri::WebviewWindow, name: String, devmode: Option<String>) -> Result<Option<print::Prefs>, String> {
+    #[cfg(windows)]
+    {
+        let hwnd = window.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+        return tauri::async_runtime::spawn_blocking(move || print::printer_preferences(&name, devmode, hwnd))
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (window, name, devmode);
+        Err("Impressão nativa disponível apenas no Windows.".into())
+    }
+}
+
+/// Corpo: bytes do PDF. Cabeçalhos: `job`, `printer` e `options` (JSON), todos url-encoded.
+/// Responde na hora; o trabalho roda em segundo plano e emite `print-progress`, `print-done` e `print-error`.
+#[tauri::command]
+fn print_pdf(app: tauri::AppHandle, request: Request) -> Result<(), String> {
+    let header = |k: &str| -> Result<String, String> {
+        let raw = request.headers().get(k).and_then(|v| v.to_str().ok()).ok_or(format!("Cabeçalho {k} ausente"))?;
+        Ok(urlencoding::decode(raw).map_err(|e| e.to_string())?.into_owned())
+    };
+    let job = header("job")?;
+    let printer = header("printer")?;
+    let opts: print::PrintOptions = serde_json::from_str(&header("options")?).map_err(|e| format!("Opções inválidas: {e}"))?;
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    let dll = app
+        .path()
+        .resource_dir()
+        .map(|d| d.join("pdfium.dll"))
+        .ok()
+        .filter(|p| p.is_file())
+        .or_else(|| std::env::current_exe().ok().map(|e| e.with_file_name("pdfium.dll")))
+        .unwrap_or_default();
+    let cancel = print::register_job(&job);
+    tauri::async_runtime::spawn_blocking(move || {
+        let ev = |page, total, message: Option<String>| PrintEvent { job: job.clone(), page, total, message };
+        #[cfg(windows)]
+        let res = print::print_pdf(&dll, &bytes, &printer, &opts, &cancel, &|p, t| {
+            let _ = app.emit("print-progress", ev(p, t, None));
+        });
+        #[cfg(not(windows))]
+        let res: Result<(), String> = {
+            let _ = (&dll, &bytes, &printer, &opts, &cancel);
+            Err("Impressão nativa disponível apenas no Windows.".into())
+        };
+        print::finish_job(&job);
+        match res {
+            Ok(()) => {
+                let _ = app.emit("print-done", ev(0, 0, None));
+            }
+            Err(m) => {
+                let _ = app.emit("print-error", ev(0, 0, Some(m)));
+            }
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn cancel_print(job: String) -> bool {
+    print::cancel_job(&job)
 }
 
 // ------------------------------------------------------------------ certificados
@@ -337,6 +441,11 @@ fn main() {
             open_default_apps,
             open_url,
             compress_pdf,
+            list_printers,
+            printer_caps,
+            printer_preferences,
+            print_pdf,
+            cancel_print,
             list_certificates,
             sign_with_certificate
         ])
