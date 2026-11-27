@@ -137,7 +137,7 @@ export function SigPanel() {
   return (
     <div className="sig-panel">
       <div className="row" style={{ flex: "none" }}>
-        <b style={{ flex: 1, fontSize: 14 }}><ShieldCheck size={16} style={{ verticalAlign: -3 }} /> Assinaturas</b>
+        <img className="modal-ic" src="/icons/verificar.png" alt="" draggable={false} style={{ flex: "none" }} /><b style={{ flex: 1, fontSize: 14 }}>Assinaturas</b>
         <button className="ib" title="Fechar painel" style={{ flex: "none" }} onClick={() => useStore.getState().set({ sigPanel: false })}><X size={16} /></button>
       </div>
       {!list && <div className="muted">Verificando…</div>}

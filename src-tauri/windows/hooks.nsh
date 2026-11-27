@@ -1,5 +1,9 @@
 ; Itens no menu do botão direito do Explorer para arquivos .pdf
 !macro NSIS_HOOK_POSTINSTALL
+  ; Ícone dos arquivos .pdf (quando o Auris PDF é o leitor padrão)
+  WriteRegStr HKCU "Software\Classes\Documento PDF\DefaultIcon" "" "$INSTDIR\arquivo-pdf.ico"
+  WriteRegStr HKCU "Software\Classes\Applications\AurisPDF.exe\DefaultIcon" "" "$INSTDIR\arquivo-pdf.ico"
+  System::Call "shell32::SHChangeNotify(i,i,i,i) (0x08000000, 0x1000, 0, 0)"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisComprimir" "" "Comprimir com Auris PDF"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisComprimir" "Icon" "$INSTDIR\AurisPDF.exe"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisComprimir\command" "" '"$INSTDIR\AurisPDF.exe" --comprimir "%1"'
@@ -19,4 +23,5 @@
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisJuntar"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisAbrir"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisImprimir"
+  DeleteRegKey HKCU "Software\Classes\Applications\AurisPDF.exe\DefaultIcon"
 !macroend

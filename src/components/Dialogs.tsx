@@ -14,7 +14,7 @@ import { appVersion, checkForUpdate } from "../lib/updater";
 import { PrintDialog } from "./PrintDialog";
 import type { CertInfo, Tab } from "../lib/types";
 
-function Modal({ title, children, foot, wide, onClose }: { title: React.ReactNode; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
+function Modal({ title, icon, children, foot, wide, onClose }: { title: React.ReactNode; icon?: string; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
   const close = onClose ?? (() => useStore.getState().openDialog(null));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -24,7 +24,7 @@ function Modal({ title, children, foot, wide, onClose }: { title: React.ReactNod
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className={`modal ${wide ? "wide" : ""}`}>
-        <div className="modal-head"><h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
+        <div className="modal-head">{icon && <img className="modal-ic" src={`/icons/${icon}.png`} alt="" draggable={false} />}<h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
         <div className="modal-body">{children}</div>
         {foot && <div className="modal-foot">{foot}</div>}
       </div>
@@ -99,7 +99,7 @@ function MergeDialog({ d }: { d: Extract<Dialog, { kind: "merge" }> }) {
   };
   const total = list.reduce((a, m) => a + (m.pages.trim() ? (() => { try { return parseRanges(m.pages, m.count).length; } catch { return 0; } })() : m.count), 0);
   return (
-    <Modal title="Juntar PDFs" wide foot={<>
+    <Modal title="Juntar PDFs" icon="juntar" wide foot={<>
       <span className="muted" style={{ marginRight: "auto" }}>{list.length} arquivos • {total} páginas</span>
       <button className="btn ghost" disabled={list.length < 2} onClick={() => run(false)}>Juntar e abrir</button>
       <button className="btn" disabled={list.length < 2} onClick={() => run(true)}>Juntar e salvar…</button>
@@ -173,7 +173,7 @@ function SplitDialog() {
     });
   };
   return (
-    <Modal title="Dividir PDF" foot={<><span className="muted" style={{ marginRight: "auto" }}>{preview}</span><button className="btn" disabled={!src} onClick={run}><Check size={16} /> Dividir</button></>}>
+    <Modal title="Dividir PDF" icon="dividir" foot={<><span className="muted" style={{ marginRight: "auto" }}>{preview}</span><button className="btn" disabled={!src} onClick={run}><Check size={16} /> Dividir</button></>}>
       <div className="fileitem">
         <span className="pdf-badge">PDF</span>
         <span className="nm">{src ? `${src.name} • ${src.count} páginas` : "Nenhum arquivo"}</span>
@@ -254,7 +254,7 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
     });
   };
   return (
-    <Modal title="Comprimir PDF" wide foot={<>
+    <Modal title="Comprimir PDF" icon="comprimir" wide foot={<>
       <button className="btn ghost" style={{ marginRight: "auto" }} onClick={async () => { const f = await pickFiles("pdf"); setList((l) => [...l, ...f.map((x) => ({ ...x, id: uid() }))]); }}><Plus size={16} /> Adicionar</button>
       <button className="btn ghost" disabled={!list.length || running} onClick={run}>{running ? "Comprimindo…" : "Comprimir"}</button>
       <button className="btn" disabled={!done.length || running} onClick={save}>Salvar {done.length > 1 ? "todos" : ""}</button>
@@ -302,7 +302,7 @@ function ImagesDialog() {
     });
   };
   return (
-    <Modal title="Imagens → PDF" wide foot={<>
+    <Modal title="Imagens → PDF" icon="imagens-pdf" wide foot={<>
       <button className="btn ghost" style={{ marginRight: "auto" }} onClick={add}><Plus size={16} /> Adicionar imagens</button>
       <button className="btn" disabled={!list.length} onClick={run}>Criar PDF</button>
     </>}>
@@ -391,7 +391,7 @@ function SignDialog() {
   };
   useEffect(() => { if (src === "store" && isApp && !certs) loadCerts(); }, [src]);
 
-  if (!tab) return <Modal title="Assinar digitalmente"><div className="muted">Abra o PDF que deseja assinar.</div></Modal>;
+  if (!tab) return <Modal title="Assinar digitalmente" icon="assinatura-digital"><div className="muted">Abra o PDF que deseja assinar.</div></Modal>;
   const field = tab.objects.find((o) => o.type === "sigfield");
 
   const sign = async () => {
@@ -437,7 +437,7 @@ function SignDialog() {
 
   const fmtD = (s: string) => new Date(s).toLocaleDateString("pt-BR");
   return (
-    <Modal title="Assinar com certificado digital" wide foot={<>
+    <Modal title="Assinar com certificado digital" icon="assinatura-digital" wide foot={<>
       <span className="muted" style={{ marginRight: "auto" }}>{field ? `Posição: página ${field.page + 1}` : "Assinatura sem posição definida"}</span>
       <button className="btn" onClick={sign} disabled={src === "store" ? !picked : !pfx}><KeyRound size={16} /> Assinar</button>
     </>}>
@@ -602,7 +602,7 @@ function SignaturePadDialog() {
     use(src);
   };
   return (
-    <Modal title="Assinatura manuscrita / rubrica" wide foot={<>
+    <Modal title="Assinatura manuscrita / rubrica" icon="assinatura-manuscrita" wide foot={<>
       <button className="btn ghost" style={{ marginRight: "auto" }} onClick={importImg}><Upload size={15} /> Importar imagem (remove o fundo)</button>
       <button className="btn ghost" onClick={clear}><Eraser size={15} /> Limpar</button>
       <button className="btn" disabled={empty} onClick={confirmPad}><Check size={16} /> Inserir</button>

@@ -202,7 +202,7 @@ export function PrintDialog({ d }: { d: Extract<Dialog, { kind: "print" }> }) {
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal print-modal">
         <div className="modal-head">
-          <h2><Printer size={17} style={{ verticalAlign: -3 }} /> Imprimir</h2>
+          <img className="modal-ic" src="/icons/imprimir.png" alt="" draggable={false} /><h2>Imprimir</h2>
           <button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button>
         </div>
         <div className="print-body">

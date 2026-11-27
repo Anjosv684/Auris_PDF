@@ -7,6 +7,8 @@ Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
 - [x] **Tela de abertura**: no lugar da tela preta com um quadrado branco, abrir com a logo Auris e uma barrinha de carregamento.
 - [x] **Impressão nativa estilo Acrobat**: diálogo próprio com pré-visualização, impressão vetorial em segundo plano (PDFium), impressão rápida com Ctrl+Shift+P, impressão em lote (todas as abas) e "Imprimir com Auris PDF" no botão direito do Explorer.
+- [x] **Ícones novos**: ícone do programa (documento com caneta), ícone dos arquivos .pdf no Explorer e os 10 ícones de função na tela inicial, na barra de ferramentas e no cabeçalho das janelas.
+- [x] **Botão "Salvar como"** na barra, ao lado do Salvar (Ctrl+Shift+S).
 
 ## Ideias para depois
 

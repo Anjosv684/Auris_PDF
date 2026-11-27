@@ -75,7 +75,8 @@
       "binaries/auris-compress"
     ],
     "resources": {
-      "resources/pdfium.dll": "pdfium.dll"
+      "resources/pdfium.dll": "pdfium.dll",
+      "resources/arquivo-pdf.ico": "arquivo-pdf.ico"
     }
   },
   "plugins": {

@@ -396,3 +396,10 @@ button { cursor: pointer; }
 .print-job .ic.ok { color: var(--green); } .print-job .ic.err { color: var(--red); }
 .print-job .txt { flex: 1; min-width: 0; }
 .print-job .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------- ícones Auris ---------------- */
+.card img.ic { width: 44px; height: 44px; border-radius: 0; filter: drop-shadow(0 4px 10px rgba(0,0,0,.3)); }
+.modal-ic { width: 30px; height: 30px; flex: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,.3)); }
+.tb-ic { width: 22px; height: 22px; display: block; flex: none; }
+.ib:disabled .tb-ic { filter: grayscale(.6); }
+.menu .tb-ic { width: 18px; height: 18px; }
