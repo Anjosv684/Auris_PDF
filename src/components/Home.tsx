@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FolderOpen, FileText, FileDown } from "lucide-react";
-import { useStore } from "../lib/store";
+import { useStore, getActiveTab } from "../lib/store";
+import { ocrTab } from "../lib/ocr";
 import { openFiles, openPaths, recents } from "../lib/actions";
 import { isApp } from "../lib/platform";
 import { FeatureIcon, type Feature } from "./icons";
@@ -11,6 +12,7 @@ const CARDS: { icon: Feature; t: string; d: string; a: () => unknown }[] = [
   { icon: "comprimir", t: "Comprimir PDF", d: "Reduza o tamanho para enviar por WhatsApp e e-mail", a: () => useStore.getState().openDialog({ kind: "compress" }) },
   { icon: "assinatura-digital", t: "Assinar digitalmente", d: "Certificado ICP-Brasil A1 (arquivo) ou A3 (token)", a: async () => { await openFiles(); } },
   { icon: "imagens-pdf", t: "Imagens → PDF", d: "Transforme fotos e prints em um PDF", a: () => useStore.getState().openDialog({ kind: "images" }) },
+  { icon: "ocr", t: "Digitalizar (OCR)", d: "Torne PDFs escaneados pesquisáveis e copiáveis", a: async () => { await openFiles(); if (getActiveTab()) await ocrTab(); } },
   { icon: "organizar", t: "Organizar páginas", d: "Reordene, gire, exclua e insira páginas", a: async () => { await openFiles(); } },
 ];
 

@@ -45,6 +45,11 @@ jobs:
           New-Item -ItemType Directory -Force pdfium | Out-Null
           tar -xzf pdfium.tgz -C pdfium
           Copy-Item pdfium/bin/pdfium.dll src-tauri/resources/pdfium.dll
+      - name: Idiomas do OCR (Tesseract)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force src-tauri/resources/tessdata | Out-Null
+          foreach ($l in 'por','eng') { Invoke-WebRequest -Uri "https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/$l.traineddata" -OutFile "src-tauri/resources/tessdata/$l.traineddata" }
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:

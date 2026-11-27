@@ -24,6 +24,15 @@ if not exist "src-tauri\resources\pdfium.dll" (
   copy /y "%TEMP%\pdfium-x64\bin\pdfium.dll" "src-tauri\resources\pdfium.dll" >nul || goto erro
 )
 
+rem Idiomas do OCR (Tesseract, licenca Apache-2.0) - baixados uma vez
+if not exist "src-tauri\resources\tessdata" mkdir "src-tauri\resources\tessdata"
+for %%L in (por eng) do (
+  if not exist "src-tauri\resources\tessdata\%%L.traineddata" (
+    echo Baixando idioma do OCR: %%L...
+    powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/%%L.traineddata' -OutFile 'src-tauri\resources\tessdata\%%L.traineddata'" || goto erro
+  )
+)
+
 rem Motor de compressao (PyMuPDF) - precisa do Python
 if not exist "src-tauri\binaries\auris-compress-x86_64-pc-windows-msvc.exe" (
   where python >nul 2>nul || (echo [ERRO] Instale o Python 3 para gerar o motor de compressao & pause & exit /b 1)

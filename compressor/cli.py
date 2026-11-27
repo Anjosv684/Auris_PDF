@@ -1,8 +1,11 @@
-"""Ponte entre o Auris PDF (Tauri) e o motor de compressão (compressor.py).
+"""Ponte entre o Auris PDF (Tauri) e os motores PyMuPDF.
 
-Uso: auris-compress <entrada.pdf> <saida.pdf> <leve|media|forte> <cinza 0|1>
-Imprime uma linha JSON com o resultado ({"antes", "depois", "modo", "reducao"})
-ou {"erro": "..."} com código de saída 1.
+Uso:
+  auris-compress <entrada.pdf> <saida.pdf> <leve|media|forte> <cinza 0|1>
+  auris-compress ocr <entrada.pdf> <saida.pdf> <pasta-tessdata> [forcar 0|1]
+
+Durante o trabalho imprime linhas "PROGRESSO <feitas> <total>".
+No fim imprime uma linha JSON com o resultado, ou {"erro": "..."} com código de saída 1.
 """
 import json
 import sys
@@ -10,17 +13,28 @@ import sys
 NIVEL = {"leve": "Leve", "media": "Média", "forte": "Forte"}
 
 
+def progresso(feitas: int, total: int):
+    print(f"PROGRESSO {feitas} {total}", flush=True)
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
-        entrada, saida, nivel, cinza = sys.argv[1:5]
-        from compressor import comprimir
-        r = comprimir(entrada, saida, NIVEL[nivel.lower()], cinza == "1")
-        print(json.dumps(r))
+        args = sys.argv[1:]
+        if args and args[0] == "ocr":
+            entrada, saida, tessdata = args[1:4]
+            forcar = len(args) > 4 and args[4] == "1"
+            from ocr import ocr
+            r = ocr(entrada, saida, tessdata, forcar=forcar, progresso=progresso)
+        else:
+            entrada, saida, nivel, cinza = args[:4]
+            from compressor import comprimir
+            r = comprimir(entrada, saida, NIVEL[nivel.lower()], cinza == "1")
+        print(json.dumps(r), flush=True)
         return 0
     except Exception as e:  # noqa: BLE001
         msg = str(e) or e.__class__.__name__
-        print(json.dumps({"erro": msg}, ensure_ascii=False))
+        print(json.dumps({"erro": msg}, ensure_ascii=False), flush=True)
         return 1
 
 

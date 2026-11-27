@@ -120,6 +120,83 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 // ------------------------------------------------------------------ compressão (motor PyMuPDF)
+// ------------------------------------------------------------------ OCR (Tesseract embutido no PyMuPDF)
+#[derive(Clone, Serialize)]
+struct OcrProgress {
+    job: String,
+    page: u32,
+    total: u32,
+}
+
+/// OCR: acrescenta uma camada de texto invisível às páginas escaneadas.
+/// Corpo: bytes do PDF. Cabeçalhos: `job` e `force` (1 = refazer também páginas que já têm texto).
+/// Emite `ocr-progress`; responde com o PDF pesquisável.
+#[tauri::command]
+async fn ocr_pdf(app: tauri::AppHandle, request: Request<'_>) -> Result<Response, String> {
+    use std::io::{BufRead, BufReader};
+    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let job = header("job");
+    let force = if header("force") == "1" { "1" } else { "0" };
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    let tessdata = app.path().resource_dir().map(|d| d.join("tessdata")).ok().filter(|p| p.is_dir()).ok_or("Arquivos de idioma do OCR não encontrados. Reinstale o Auris PDF.")?;
+    tauri::async_runtime::spawn_blocking(move || -> Result<Response, String> {
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let engine = exe.with_file_name(if cfg!(windows) { "auris-compress.exe" } else { "auris-compress" });
+        if !engine.is_file() {
+            return Err("Motor de OCR não encontrado. Reinstale o Auris PDF.".into());
+        }
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let dir = std::env::temp_dir();
+        let input = dir.join(format!("auris-ocr-{nanos}-in.pdf"));
+        let output = dir.join(format!("auris-ocr-{nanos}-out.pdf"));
+        std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
+        let mut cmd = std::process::Command::new(&engine);
+        cmd.arg("ocr").arg(&input).arg(&output).arg(&tessdata).arg(force).stdout(std::process::Stdio::piped());
+        #[cfg(windows)]
+        hidden(&mut cmd);
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let _ = std::fs::remove_file(&input);
+                return Err(format!("Falha ao iniciar o motor de OCR: {e}"));
+            }
+        };
+        let mut last = String::new();
+        if let Some(out) = child.stdout.take() {
+            for line in BufReader::new(out).lines().map_while(Result::ok) {
+                if let Some(rest) = line.strip_prefix("PROGRESSO ") {
+                    let mut it = rest.split_whitespace().filter_map(|n| n.parse::<u32>().ok());
+                    if let (Some(page), Some(total)) = (it.next(), it.next()) {
+                        let _ = app.emit("ocr-progress", OcrProgress { job: job.clone(), page, total });
+                    }
+                } else if !line.trim().is_empty() {
+                    last = line;
+                }
+            }
+        }
+        let status = child.wait().map_err(|e| e.to_string())?;
+        let _ = std::fs::remove_file(&input);
+        let info: serde_json::Value = serde_json::from_str(&last).unwrap_or(serde_json::Value::Null);
+        if !status.success() {
+            let _ = std::fs::remove_file(&output);
+            let msg = info.get("erro").and_then(|v| v.as_str()).unwrap_or("Falha ao reconhecer o texto.");
+            return Err(if msg.contains("senha") { "PDF protegido por senha.".into() } else { msg.to_string() });
+        }
+        let pdf = std::fs::read(&output).map_err(|e| e.to_string());
+        let _ = std::fs::remove_file(&output);
+        // 2 bytes iniciais: quantas páginas foram reconhecidas (u16, big-endian)
+        let n = info.get("reconhecidas").and_then(|v| v.as_u64()).unwrap_or(0).min(u16::MAX as u64) as u16;
+        let mut res = n.to_be_bytes().to_vec();
+        res.extend_from_slice(&pdf?);
+        Ok(Response::new(res))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Roda o motor `auris-compress.exe` (sidecar instalado ao lado do app).
 /// Corpo: bytes do PDF. Cabeçalhos: `level` (leve|media|forte) e `gray` (0|1).
 /// Resposta: 1 byte com o modo (0 normal, 1 páginas viraram imagem, 2 original mantido) + PDF.
@@ -441,6 +518,7 @@ fn main() {
             open_default_apps,
             open_url,
             compress_pdf,
+            ocr_pdf,
             list_printers,
             printer_caps,
             printer_preferences,

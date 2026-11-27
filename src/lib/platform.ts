@@ -202,3 +202,20 @@ export async function onPrintEvents(h: { progress: (e: PrintEvent) => void; done
   ]);
   return () => un.forEach((f) => f());
 }
+
+// ---------- OCR (Tesseract embutido no motor PyMuPDF) ----------
+/** Reconhece o texto das páginas escaneadas. Retorna o PDF pesquisável e quantas páginas foram reconhecidas. */
+export async function ocrNative(bytes: Uint8Array, force: boolean, onProgress: (page: number, total: number) => void) {
+  const { invoke } = await tauri();
+  const { listen } = await import("@tauri-apps/api/event");
+  const job = Math.random().toString(36).slice(2);
+  const un = await listen<{ job: string; page: number; total: number }>("ocr-progress", (e) => {
+    if (e.payload.job === job) onProgress(e.payload.page, e.payload.total);
+  });
+  try {
+    const buf = new Uint8Array(await invoke<ArrayBuffer>("ocr_pdf", bytes, { headers: { job, force: force ? "1" : "0" } }));
+    return { recognized: (buf[0] << 8) | buf[1], bytes: buf.subarray(2) };
+  } finally {
+    un();
+  }
+}

@@ -8,6 +8,7 @@ import { Home } from "./components/Home";
 import { Dialogs } from "./components/Dialogs";
 import { UpdateUI } from "./components/UpdateUI";
 import { PrintJobs } from "./components/PrintJobs";
+import { OcrHint } from "./components/OcrHint";
 import { quickPrint, openPrint } from "./lib/print";
 import { Tooltip } from "./components/Tooltip";
 import { startAutoCheck } from "./lib/updater";
@@ -220,6 +221,7 @@ export default function App() {
         <>
           <Toolbar />
           {view === "doc" && <PropBar />}
+          {view === "doc" && <OcrHint />}
           <div className="main">
             {sidebar && view === "doc" && <Sidebar />}
             <div style={{ flex: 1, display: view === "doc" ? "flex" : "none", position: "relative", minWidth: 0 }}>

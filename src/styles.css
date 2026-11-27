@@ -404,3 +404,8 @@ svg.lucide { stroke-width: 1.75; flex: none; }
 .modal-ic { color: var(--icon-accent); flex: none; }
 .card .ic { background: rgba(142,194,255,.10); border: 1px solid rgba(142,194,255,.18); color: var(--icon-accent); }
 .sig-obj-ic { vertical-align: -3px; margin-right: 2px; }
+
+/* ---------------- OCR ---------------- */
+.ocr-hint { display: flex; align-items: center; gap: 10px; padding: 7px 10px 7px 14px; font-size: 13px; color: var(--text);
+  background: rgba(142,194,255,.08); border-bottom: 1px solid rgba(142,194,255,.16); }
+.ocr-hint span { flex: 1; min-width: 0; color: var(--text-2); }

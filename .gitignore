@@ -11,3 +11,4 @@ compressor/build/
 src-tauri/binaries/
 __pycache__/
 src-tauri/resources/pdfium.dll
+src-tauri/resources/tessdata/

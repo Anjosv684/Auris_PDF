@@ -76,7 +76,9 @@
     ],
     "resources": {
       "resources/pdfium.dll": "pdfium.dll",
-      "resources/arquivo-pdf.ico": "arquivo-pdf.ico"
+      "resources/arquivo-pdf.ico": "arquivo-pdf.ico",
+      "resources/tessdata/por.traineddata": "tessdata/por.traineddata",
+      "resources/tessdata/eng.traineddata": "tessdata/eng.traineddata"
     }
   },
   "plugins": {
