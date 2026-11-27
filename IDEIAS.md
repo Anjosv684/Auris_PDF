@@ -16,7 +16,7 @@ Pedidos internos (27/11/2026):
 - [x] **Girar o documento**: barrinha discreta no centro inferior (quase transparente até passar o mouse) com girar à esquerda/direita. Dá para esconder no "x" da própria barra ou em Configurações → Barra de giro do documento.
 
 Correções (27/11/2026):
-- [x] OCR dava "Tesseract language initialisation failed" no app instalado (caminho com prefixo `\?\` do Windows).
+- [x] OCR dava "Tesseract language initialisation failed" no app instalado (caminho com prefixo `\\?\` do Windows).
 - [x] Menu "⋯ Mais ferramentas" e menu de carimbos abriam cortados (invisíveis) dentro da barra de ferramentas.
 
 ## Ideias para depois
