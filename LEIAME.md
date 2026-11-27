@@ -9,6 +9,10 @@ Leitor e editor de PDF para Windows, no visual Auris. Tudo roda localmente: nenh
 - Busca com destaque (Ctrl+F), seleção e cópia de texto, links internos
 - PDFs com senha
 
+**Converter**
+- PDF → Word (.docx) editável, com tabelas e imagens; páginas escaneadas passam por OCR antes
+- Fotos → PDF, inclusive pelo botão direito sobre as imagens no Explorer ("Converter em PDF com Auris PDF")
+
 **Digitalizar (OCR)**
 - Torna PDFs escaneados pesquisáveis: o texto passa a ser buscado (Ctrl+F), selecionado e copiado, e a aparência do documento não muda
 - Português e inglês, 100% offline (Tesseract embutido no PyMuPDF)
@@ -109,6 +113,7 @@ Estrutura:
 ## Licenças de terceiros
 PDF.js (Apache-2.0), pdf-lib (MIT), node-forge (BSD-3), React (MIT), Tauri (MIT/Apache-2.0), lucide (ISC),
 PDFium (BSD-3 / Apache-2.0; binário de https://github.com/bblanchon/pdfium-binaries, MIT), dados de idioma do Tesseract (Apache-2.0).
+pdf2docx (MIT), OpenCV (Apache-2.0), python-docx (MIT).
 Todas permitem uso comercial.
 
 **Atenção:** o motor de compressão usa o **PyMuPDF (AGPL-3.0)**. O uso interno é livre. Para vender o Auris PDF como produto de código fechado, é preciso a licença comercial da Artifex ou trocar esse motor.

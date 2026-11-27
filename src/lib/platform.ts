@@ -69,7 +69,7 @@ export async function saveAs(bytes: Uint8Array, suggested: string, ext = "pdf"):
     return suggested;
   }
   const { dialog } = await tauri();
-  const path = await dialog.save({ defaultPath: suggested, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+  const path = await dialog.save({ defaultPath: suggested, filters: [{ name: ext === "docx" ? "Documento do Word" : ext.toUpperCase(), extensions: [ext] }] });
   if (!path) return null;
   await writePath(path, bytes);
   return path;
@@ -93,7 +93,7 @@ export async function saveMany(files: { name: string; bytes: Uint8Array }[], zip
 }
 
 // ---------- integração com o Windows ----------
-export type Launch = { action: "abrir" | "comprimir" | "juntar" | "imprimir"; paths: string[] };
+export type Launch = { action: "abrir" | "comprimir" | "juntar" | "imprimir" | "imagens"; paths: string[] };
 
 export async function takeLaunch(): Promise<Launch[]> {
   if (!isApp) return [];
@@ -205,17 +205,35 @@ export async function onPrintEvents(h: { progress: (e: PrintEvent) => void; done
 
 // ---------- OCR (Tesseract embutido no motor PyMuPDF) ----------
 /** Reconhece o texto das páginas escaneadas. Retorna o PDF pesquisável e quantas páginas foram reconhecidas. */
-export async function ocrNative(bytes: Uint8Array, force: boolean, onProgress: (page: number, total: number) => void) {
+/** Chama um comando do motor PyMuPDF repassando o progresso (evento engine-progress). */
+async function engineCall(cmd: string, bytes: Uint8Array, headers: Record<string, string>, onProgress: (page: number, total: number) => void) {
   const { invoke } = await tauri();
   const { listen } = await import("@tauri-apps/api/event");
   const job = Math.random().toString(36).slice(2);
-  const un = await listen<{ job: string; page: number; total: number }>("ocr-progress", (e) => {
+  const un = await listen<{ job: string; page: number; total: number }>("engine-progress", (e) => {
     if (e.payload.job === job) onProgress(e.payload.page, e.payload.total);
   });
   try {
-    const buf = new Uint8Array(await invoke<ArrayBuffer>("ocr_pdf", bytes, { headers: { job, force: force ? "1" : "0" } }));
-    return { recognized: (buf[0] << 8) | buf[1], bytes: buf.subarray(2) };
+    const buf = new Uint8Array(await invoke<ArrayBuffer>(cmd, bytes, { headers: { job, ...headers } }));
+    return { count: (buf[0] << 8) | buf[1], bytes: buf.subarray(2) };
   } finally {
     un();
   }
+}
+
+export async function ocrNative(bytes: Uint8Array, force: boolean, onProgress: (page: number, total: number) => void) {
+  const r = await engineCall("ocr_pdf", bytes, { force: force ? "1" : "0" }, onProgress);
+  return { recognized: r.count, bytes: r.bytes };
+}
+
+/** PDF → Word (.docx). `scanned` = páginas que passaram por OCR. */
+export async function wordNative(bytes: Uint8Array, onProgress: (page: number, total: number) => void) {
+  const r = await engineCall("pdf_to_word", bytes, {}, onProgress);
+  return { scanned: r.count, bytes: r.bytes };
+}
+
+/** Abre no programa padrão um arquivo que o app acabou de gerar (.docx/.pdf). */
+export async function openPath(path: string) {
+  const { invoke } = await tauri();
+  await invoke("open_path", { path });
 }

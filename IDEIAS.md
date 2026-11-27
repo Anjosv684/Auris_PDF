@@ -6,8 +6,8 @@ Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 ## Para a próxima versão (1.0.4)
 
 Pedidos de clientes (suporte Aliança Tur, 27/11/2026):
-- [ ] **Converter PDF para Word (.docx)**
-- [ ] **Converter foto para PDF**: a função já existe ("Imagens → PDF"), mas está escondida. Deixar à mão: botão na barra e "Converter em PDF com Auris" no botão direito sobre imagens no Explorer.
+- [x] **Converter PDF para Word (.docx)**: mantém texto, tabelas e imagens; páginas escaneadas passam por OCR antes. Botão na barra e cartão na tela inicial; o .docx abre direto no Word.
+- [x] **Converter foto para PDF**: a função já existia ("Imagens → PDF"); agora tem botão na barra e "Converter em PDF com Auris PDF" no botão direito sobre fotos no Explorer.
 - [x] **Digitalizar / OCR**: transformar PDF escaneado em PDF pesquisável (texto selecionável e com busca). Botão "OCR" na barra, cartão na tela inicial e aviso automático quando o PDF aberto parece escaneado.
 - [ ] **Editar os textos do PDF**: clicar num texto existente e alterar.
 

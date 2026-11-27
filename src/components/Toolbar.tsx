@@ -5,6 +5,7 @@ import {
 import { useStore, useActiveTab } from "../lib/store";
 import { FeatureIcon } from "./icons";
 import { ocrTab } from "../lib/ocr";
+import { exportWord } from "../lib/word";
 import type { Obj, Tool } from "../lib/types";
 import { viewerApi } from "../lib/viewerApi";
 import {
@@ -108,7 +109,9 @@ export function Toolbar() {
       <button className="ib" title="Juntar PDFs" onClick={() => s.openDialog({ kind: "merge" })}><FeatureIcon n="juntar" /></button>
       <button className="ib" title="Dividir PDF" onClick={() => s.openDialog({ kind: "split" })}><FeatureIcon n="dividir" /></button>
       <button className="ib" title="Comprimir PDF" onClick={() => s.openDialog({ kind: "compress" })}><FeatureIcon n="comprimir" /></button>
-      <button className="ib label" title="Reconhecer texto (OCR): torna PDFs escaneados pesquisáveis e copiáveis" onClick={() => ocrTab()} disabled={!tab}><FeatureIcon n="ocr" /> OCR</button>
+      <button className="ib" title="Reconhecer texto (OCR): torna PDFs escaneados pesquisáveis e copiáveis" onClick={() => ocrTab()} disabled={!tab}><FeatureIcon n="ocr" /></button>
+      <button className="ib" title="Converter para Word (.docx)" onClick={() => exportWord()} disabled={!tab}><FeatureIcon n="word" /></button>
+      <button className="ib" title="Fotos e imagens → PDF" onClick={() => s.openDialog({ kind: "images" })}><FeatureIcon n="imagens-pdf" /></button>
       <Menu icon={<MoreHorizontal size={17} />} title="Mais ferramentas">
         {(close) => <>
           <button onClick={() => { s.openDialog({ kind: "export-images" }); close(); }}><FileDown size={16} /> Exportar páginas como imagem</button>

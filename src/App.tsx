@@ -52,6 +52,8 @@ export default function App() {
     let mergeBuf: string[] = [];
     let mergeTimer = 0;
     let printBuf: string[] = [];
+    let imgBuf: string[] = [];
+    let imgTimer = 0;
     let printTimer = 0;
     const handle = async (l: Launch) => {
       if (l.action === "abrir") return openPaths(l.paths);
@@ -60,6 +62,17 @@ export default function App() {
         const cur = useStore.getState().dialog;
         if (cur?.kind === "compress" && cur.files) useStore.getState().openDialog({ kind: "compress", files: [...cur.files, ...files] });
         else useStore.getState().openDialog({ kind: "compress", files });
+        return;
+      }
+      if (l.action === "imagens") {
+        imgBuf.push(...l.paths);
+        clearTimeout(imgTimer);
+        imgTimer = window.setTimeout(async () => {
+          const files = await Promise.all(imgBuf.map(readPath));
+          imgBuf = [];
+          const cur = useStore.getState().dialog;
+          useStore.getState().openDialog({ kind: "images", files: cur?.kind === "images" && cur.files ? [...cur.files, ...files] : files });
+        }, 700);
         return;
       }
       if (l.action === "imprimir") {

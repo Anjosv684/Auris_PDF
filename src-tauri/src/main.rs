@@ -28,6 +28,7 @@ fn parse_args(args: &[String], cwd: Option<&str>) -> Option<Launch> {
             "--comprimir" => action = "comprimir".into(),
             "--juntar" => action = "juntar".into(),
             "--imprimir" => action = "imprimir".into(),
+            "--imagens" => action = "imagens".into(),
             s if s.starts_with("--") || s.starts_with("-psn") => {}
             s => {
                 let mut p = PathBuf::from(s);
@@ -36,8 +37,13 @@ fn parse_args(args: &[String], cwd: Option<&str>) -> Option<Launch> {
                         p = Path::new(c).join(p);
                     }
                 }
-                let is_pdf = p.extension().map(|e| e.eq_ignore_ascii_case("pdf")).unwrap_or(false);
-                if is_pdf && p.is_file() {
+                let ext = p.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+                let ok = if action == "imagens" {
+                    matches!(ext.as_str(), "jpg" | "jpeg" | "png" | "webp" | "gif" | "bmp")
+                } else {
+                    ext == "pdf"
+                };
+                if ok && p.is_file() {
                     paths.push(p.to_string_lossy().to_string());
                 }
             }
@@ -101,6 +107,23 @@ fn open_default_apps() -> Result<(), String> {
     Err("Disponível apenas no Windows".into())
 }
 
+/// Abre um documento gerado pelo app (.docx/.pdf) no programa padrão do Windows.
+#[tauri::command]
+fn open_path(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    let ok = p.is_file() && p.extension().map(|e| e.eq_ignore_ascii_case("docx") || e.eq_ignore_ascii_case("pdf")).unwrap_or(false);
+    if !ok {
+        return Err("Arquivo não permitido".into());
+    }
+    #[cfg(windows)]
+    {
+        hidden(std::process::Command::new("cmd").args(["/C", "start", "", &path]))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") {
@@ -119,21 +142,74 @@ fn open_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
-// ------------------------------------------------------------------ compressão (motor PyMuPDF)
-// ------------------------------------------------------------------ OCR (Tesseract embutido no PyMuPDF)
+// ------------------------------------------------------------------ OCR e PDF → Word (motor PyMuPDF)
 #[derive(Clone, Serialize)]
-struct OcrProgress {
+struct EngineProgress {
     job: String,
     page: u32,
     total: u32,
 }
 
+/// Roda `auris-compress.exe <modo> <entrada> <saída> <args...>`, repassando as linhas
+/// "PROGRESSO feitas total" como evento `engine-progress`. Retorna o JSON final e o arquivo gerado.
+fn run_engine(app: &tauri::AppHandle, job: &str, mode: &str, bytes: &[u8], out_ext: &str, args: &[std::ffi::OsString]) -> Result<(serde_json::Value, Vec<u8>), String> {
+    use std::io::{BufRead, BufReader};
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let engine = exe.with_file_name(if cfg!(windows) { "auris-compress.exe" } else { "auris-compress" });
+    if !engine.is_file() {
+        return Err("Motor de PDF não encontrado. Reinstale o Auris PDF.".into());
+    }
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    let dir = std::env::temp_dir();
+    let input = dir.join(format!("auris-{mode}-{nanos}-in.pdf"));
+    let output = dir.join(format!("auris-{mode}-{nanos}-out.{out_ext}"));
+    std::fs::write(&input, bytes).map_err(|e| e.to_string())?;
+    let mut cmd = std::process::Command::new(&engine);
+    cmd.arg(mode).arg(&input).arg(&output).args(args).stdout(std::process::Stdio::piped());
+    #[cfg(windows)]
+    hidden(&mut cmd);
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = std::fs::remove_file(&input);
+            return Err(format!("Falha ao iniciar o motor de PDF: {e}"));
+        }
+    };
+    let mut last = String::new();
+    if let Some(out) = child.stdout.take() {
+        for line in BufReader::new(out).lines().map_while(Result::ok) {
+            if let Some(rest) = line.strip_prefix("PROGRESSO ") {
+                let mut it = rest.split_whitespace().filter_map(|n| n.parse::<u32>().ok());
+                if let (Some(page), Some(total)) = (it.next(), it.next()) {
+                    let _ = app.emit("engine-progress", EngineProgress { job: job.to_string(), page, total });
+                }
+            } else if !line.trim().is_empty() {
+                last = line;
+            }
+        }
+    }
+    let status = child.wait().map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(&input);
+    let info: serde_json::Value = serde_json::from_str(&last).unwrap_or(serde_json::Value::Null);
+    if !status.success() {
+        let _ = std::fs::remove_file(&output);
+        let msg = info.get("erro").and_then(|v| v.as_str()).unwrap_or("Falha ao processar o PDF.");
+        return Err(if msg.contains("senha") { "PDF protegido por senha.".into() } else { msg.to_string() });
+    }
+    let data = std::fs::read(&output).map_err(|e| e.to_string());
+    let _ = std::fs::remove_file(&output);
+    Ok((info, data?))
+}
+
+fn tessdata_dir(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    app.path().resource_dir().map(|d| d.join("tessdata")).ok().filter(|p| p.is_dir())
+}
+
 /// OCR: acrescenta uma camada de texto invisível às páginas escaneadas.
 /// Corpo: bytes do PDF. Cabeçalhos: `job` e `force` (1 = refazer também páginas que já têm texto).
-/// Emite `ocr-progress`; responde com o PDF pesquisável.
+/// Resposta: 2 bytes (u16 BE) com quantas páginas foram reconhecidas + PDF pesquisável.
 #[tauri::command]
 async fn ocr_pdf(app: tauri::AppHandle, request: Request<'_>) -> Result<Response, String> {
-    use std::io::{BufRead, BufReader};
     let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
     let job = header("job");
     let force = if header("force") == "1" { "1" } else { "0" };
@@ -141,62 +217,40 @@ async fn ocr_pdf(app: tauri::AppHandle, request: Request<'_>) -> Result<Response
         return Err("Conteúdo inválido".into());
     };
     let bytes = bytes.clone();
-    let tessdata = app.path().resource_dir().map(|d| d.join("tessdata")).ok().filter(|p| p.is_dir()).ok_or("Arquivos de idioma do OCR não encontrados. Reinstale o Auris PDF.")?;
+    let tessdata = tessdata_dir(&app).ok_or("Arquivos de idioma do OCR não encontrados. Reinstale o Auris PDF.")?;
     tauri::async_runtime::spawn_blocking(move || -> Result<Response, String> {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        let engine = exe.with_file_name(if cfg!(windows) { "auris-compress.exe" } else { "auris-compress" });
-        if !engine.is_file() {
-            return Err("Motor de OCR não encontrado. Reinstale o Auris PDF.".into());
-        }
-        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-        let dir = std::env::temp_dir();
-        let input = dir.join(format!("auris-ocr-{nanos}-in.pdf"));
-        let output = dir.join(format!("auris-ocr-{nanos}-out.pdf"));
-        std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
-        let mut cmd = std::process::Command::new(&engine);
-        cmd.arg("ocr").arg(&input).arg(&output).arg(&tessdata).arg(force).stdout(std::process::Stdio::piped());
-        #[cfg(windows)]
-        hidden(&mut cmd);
-        let mut child = match cmd.spawn() {
-            Ok(c) => c,
-            Err(e) => {
-                let _ = std::fs::remove_file(&input);
-                return Err(format!("Falha ao iniciar o motor de OCR: {e}"));
-            }
-        };
-        let mut last = String::new();
-        if let Some(out) = child.stdout.take() {
-            for line in BufReader::new(out).lines().map_while(Result::ok) {
-                if let Some(rest) = line.strip_prefix("PROGRESSO ") {
-                    let mut it = rest.split_whitespace().filter_map(|n| n.parse::<u32>().ok());
-                    if let (Some(page), Some(total)) = (it.next(), it.next()) {
-                        let _ = app.emit("ocr-progress", OcrProgress { job: job.clone(), page, total });
-                    }
-                } else if !line.trim().is_empty() {
-                    last = line;
-                }
-            }
-        }
-        let status = child.wait().map_err(|e| e.to_string())?;
-        let _ = std::fs::remove_file(&input);
-        let info: serde_json::Value = serde_json::from_str(&last).unwrap_or(serde_json::Value::Null);
-        if !status.success() {
-            let _ = std::fs::remove_file(&output);
-            let msg = info.get("erro").and_then(|v| v.as_str()).unwrap_or("Falha ao reconhecer o texto.");
-            return Err(if msg.contains("senha") { "PDF protegido por senha.".into() } else { msg.to_string() });
-        }
-        let pdf = std::fs::read(&output).map_err(|e| e.to_string());
-        let _ = std::fs::remove_file(&output);
-        // 2 bytes iniciais: quantas páginas foram reconhecidas (u16, big-endian)
+        let (info, pdf) = run_engine(&app, &job, "ocr", &bytes, "pdf", &[tessdata.into_os_string(), force.into()])?;
         let n = info.get("reconhecidas").and_then(|v| v.as_u64()).unwrap_or(0).min(u16::MAX as u64) as u16;
         let mut res = n.to_be_bytes().to_vec();
-        res.extend_from_slice(&pdf?);
+        res.extend_from_slice(&pdf);
         Ok(Response::new(res))
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
+/// PDF → Word (.docx). Páginas escaneadas passam pelo OCR antes.
+/// Corpo: bytes do PDF. Cabeçalho: `job`. Resposta: 2 bytes (u16 BE) com o nº de páginas escaneadas + .docx.
+#[tauri::command]
+async fn pdf_to_word(app: tauri::AppHandle, request: Request<'_>) -> Result<Response, String> {
+    let job = request.headers().get("job").and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Conteúdo inválido".into());
+    };
+    let bytes = bytes.clone();
+    let tessdata = tessdata_dir(&app).map(|p| p.into_os_string()).unwrap_or_default();
+    tauri::async_runtime::spawn_blocking(move || -> Result<Response, String> {
+        let (info, docx) = run_engine(&app, &job, "word", &bytes, "docx", &[tessdata])?;
+        let n = info.get("escaneadas").and_then(|v| v.as_u64()).unwrap_or(0).min(u16::MAX as u64) as u16;
+        let mut res = n.to_be_bytes().to_vec();
+        res.extend_from_slice(&docx);
+        Ok(Response::new(res))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+// ------------------------------------------------------------------ compressão (motor PyMuPDF)
 /// Roda o motor `auris-compress.exe` (sidecar instalado ao lado do app).
 /// Corpo: bytes do PDF. Cabeçalhos: `level` (leve|media|forte) e `gray` (0|1).
 /// Resposta: 1 byte com o modo (0 normal, 1 páginas viraram imagem, 2 original mantido) + PDF.
@@ -517,8 +571,10 @@ fn main() {
             write_file,
             open_default_apps,
             open_url,
+            open_path,
             compress_pdf,
             ocr_pdf,
+            pdf_to_word,
             list_printers,
             printer_caps,
             printer_preferences,

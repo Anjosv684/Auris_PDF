@@ -43,7 +43,7 @@ export function Dialogs() {
     case "merge": return <MergeDialog d={d} />;
     case "split": return <SplitDialog />;
     case "compress": return <CompressDialog d={d} />;
-    case "images": return <ImagesDialog />;
+    case "images": return <ImagesDialog d={d} />;
     case "export-images": return <ExportImagesDialog />;
     case "sign": return <SignDialog />;
     case "signature-pad": return <SignaturePadDialog />;
@@ -286,14 +286,13 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
 }
 
 // ---------------- imagens → PDF ----------------
-function ImagesDialog() {
+function ImagesDialog({ d }: { d: Extract<Dialog, { kind: "images" }> }) {
   const [list, setList] = useState<(PickedFile & { id: string; url: string })[]>([]);
   const [mode, setMode] = useState<"a4" | "image">("a4");
-  const add = async () => {
-    const f = await pickFiles("image");
+  const push = (f: PickedFile[]) =>
     setList((l) => [...l, ...f.map((x) => ({ ...x, id: uid(), url: URL.createObjectURL(new Blob([x.bytes as BlobPart])) }))]);
-  };
-  useEffect(() => { add(); }, []);
+  const add = async () => push(await pickFiles("image"));
+  useEffect(() => { if (d.files?.length) push(d.files); else add(); }, []);
   const run = async () => {
     await runTask("Criando PDF…", async () => {
       const out = await imagesToPdf(list, mode);

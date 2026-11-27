@@ -10,6 +10,9 @@
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisJuntar" "" "Juntar com Auris PDF"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisJuntar" "Icon" "$INSTDIR\AurisPDF.exe"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisJuntar\command" "" '"$INSTDIR\AurisPDF.exe" --juntar "%1"'
+  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\image\shell\AurisImagemPdf" "" "Converter em PDF com Auris PDF"
+  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\image\shell\AurisImagemPdf" "Icon" "$INSTDIR\AurisPDF.exe"
+  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\image\shell\AurisImagemPdf\command" "" '"$INSTDIR\AurisPDF.exe" --imagens "%1"'
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisImprimir" "" "Imprimir com Auris PDF"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisImprimir" "Icon" "$INSTDIR\AurisPDF.exe"
   WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisImprimir\command" "" '"$INSTDIR\AurisPDF.exe" --imprimir "%1"'
@@ -24,4 +27,5 @@
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisAbrir"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\AurisImprimir"
   DeleteRegKey HKCU "Software\Classes\Applications\AurisPDF.exe\DefaultIcon"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\image\shell\AurisImagemPdf"
 !macroend

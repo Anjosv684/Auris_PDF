@@ -3,6 +3,7 @@
 Uso:
   auris-compress <entrada.pdf> <saida.pdf> <leve|media|forte> <cinza 0|1>
   auris-compress ocr <entrada.pdf> <saida.pdf> <pasta-tessdata> [forcar 0|1]
+  auris-compress word <entrada.pdf> <saida.docx> [pasta-tessdata]
 
 Durante o trabalho imprime linhas "PROGRESSO <feitas> <total>".
 No fim imprime uma linha JSON com o resultado, ou {"erro": "..."} com código de saída 1.
@@ -21,7 +22,12 @@ def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
         args = sys.argv[1:]
-        if args and args[0] == "ocr":
+        if args and args[0] == "word":
+            entrada, saida = args[1:3]
+            tessdata = args[3] if len(args) > 3 and args[3] else None
+            from word import para_word
+            r = para_word(entrada, saida, tessdata, progresso=progresso)
+        elif args and args[0] == "ocr":
             entrada, saida, tessdata = args[1:4]
             forcar = len(args) > 4 and args[4] == "1"
             from ocr import ocr

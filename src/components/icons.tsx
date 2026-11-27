@@ -1,6 +1,6 @@
 // Ícones de função do Auris PDF: um único mapa (Lucide, outline) usado em toda a interface.
 import {
-  Combine, Scissors, Minimize2, FileSignature, Signature, LayoutGrid, Images, Printer, Stamp, ShieldCheck, ScanText,
+  Combine, Scissors, Minimize2, FileSignature, Signature, LayoutGrid, Images, Printer, Stamp, ShieldCheck, ScanText, FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,6 +16,7 @@ export const FEATURE_ICONS = {
   carimbo: Stamp,
   verificar: ShieldCheck,
   ocr: ScanText,
+  word: FileText,
 } satisfies Record<string, LucideIcon>;
 
 export type Feature = keyof typeof FEATURE_ICONS;

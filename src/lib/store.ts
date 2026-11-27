@@ -6,7 +6,7 @@ export type Dialog =
   | { kind: "merge"; files?: { name: string; bytes: Uint8Array }[] }
   | { kind: "split" }
   | { kind: "compress"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
-  | { kind: "images" }
+  | { kind: "images"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "export-images" }
   | { kind: "sign" }
   | { kind: "signature-pad" }
