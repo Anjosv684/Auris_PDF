@@ -9,11 +9,15 @@ Pedidos de clientes (suporte Aliança Tur, 27/11/2026):
 - [x] **Converter PDF para Word (.docx)**: mantém texto, tabelas e imagens; páginas escaneadas passam por OCR antes. Botão na barra e cartão na tela inicial; o .docx abre direto no Word.
 - [x] **Converter foto para PDF**: a função já existia ("Imagens → PDF"); agora tem botão na barra e "Converter em PDF com Auris PDF" no botão direito sobre fotos no Explorer.
 - [x] **Digitalizar / OCR**: transformar PDF escaneado em PDF pesquisável (texto selecionável e com busca). Botão "OCR" na barra, cartão na tela inicial e aviso automático quando o PDF aberto parece escaneado.
-- [x] **Editar os textos do PDF**: ferramenta "Editar texto" (tecla X): clique numa linha, altere e aperte Enter. Mantém posição, tamanho, cor e negrito/itálico; dá para desfazer (Ctrl+Z).
+- [x] **Editar os textos do PDF**: ferramenta "Editar texto" (tecla X): clique numa linha, altere e aperte Enter. Mantém posição, tamanho, cor e negrito/itálico; dá para desfazer (Ctrl+Z). Funciona também em PDF escaneado: a linha é lida por OCR, o papel é repintado e o texto novo sai na fonte, tamanho e cor mais parecidos com o original.
 
 Pedidos internos (27/11/2026):
 - [x] **Botão direito na imagem colada**: girar 90°, espelhar na horizontal/vertical, trazer para frente / avançar / recuar / enviar para trás, remover fundo branco, repetir em todas as páginas, duplicar e excluir. A ordem das camadas também vale para formas, textos e carimbos.
 - [x] **Girar o documento**: barrinha discreta no centro inferior (quase transparente até passar o mouse) com girar à esquerda/direita. Dá para esconder no "x" da própria barra ou em Configurações → Barra de giro do documento.
+
+Correções (27/11/2026):
+- [x] OCR dava "Tesseract language initialisation failed" no app instalado (caminho com prefixo `\?\` do Windows).
+- [x] Menu "⋯ Mais ferramentas" e menu de carimbos abriam cortados (invisíveis) dentro da barra de ferramentas.
 
 ## Ideias para depois
 

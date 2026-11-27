@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useActiveTab } from "../lib/store";
+import { useActiveTab, useStore } from "../lib/store";
 import { engineWarmup, type TextLine } from "../lib/platform";
 import { applyTextEdit, linesOf } from "../lib/textedit";
 
@@ -23,14 +23,20 @@ export function TextEditLayer({ page, w, h }: { page: number; w: number; h: numb
       engineWarmup();
     }
   }, []);
+  // só lê as páginas perto da que está na tela (em escaneados, cada leitura é um OCR)
+  const near = !!tab && Math.abs(page + 1 - tab.page) <= 1;
   useEffect(() => {
-    if (!tab) return;
+    if (!tab || !near) return;
     let alive = true;
     setLines(null);
     setEdit(null);
-    linesOf(tab).then((p) => alive && setLines(p[page] ?? [])).catch(() => alive && setLines([]));
+    linesOf(tab, page).then((l) => alive && setLines(l)).catch((e) => {
+      if (!alive) return;
+      setLines([]);
+      useStore.getState().toast("Não foi possível ler o texto da página: " + ((e as Error)?.message || String(e)), "err");
+    });
     return () => { alive = false; };
-  }, [tab?.id, tab?.version, page]);
+  }, [tab?.id, tab?.version, page, near]);
   useEffect(() => {
     if (edit && ta.current) {
       ta.current.focus();
@@ -38,7 +44,8 @@ export function TextEditLayer({ page, w, h }: { page: number; w: number; h: numb
     }
   }, [edit?.i]);
 
-  if (!tab || !lines) return null;
+  if (!tab || !near) return null;
+  if (!lines) return <div className="te-layer"><div className="te-reading">Lendo o texto da página…</div></div>;
   const pct = (v: number, b: number) => `${(v / b) * 100}%`;
   const sf = "var(--scale-factor, 1)";
 
@@ -47,7 +54,7 @@ export function TextEditLayer({ page, w, h }: { page: number; w: number; h: numb
     const line = lines[edit.i];
     const text = edit.text.replace(/\s+$/, "");
     setEdit(null);
-    if (line && text !== line.text) applyTextEdit(tab, page, line, text);
+    if (line && text !== line.text) applyTextEdit(tab, page, line, text, lines);
   };
 
   return (

@@ -201,8 +201,21 @@ fn run_engine(app: &tauri::AppHandle, job: &str, mode: &str, bytes: &[u8], out_e
     Ok((info, data?))
 }
 
+/// Remove o prefixo `\\?\` que o Windows/Tauri põe em caminhos "verbatim".
+/// O Tesseract não entende esse prefixo e falha com "language initialisation failed".
+fn plain_path(p: std::path::PathBuf) -> std::path::PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        return std::path::PathBuf::from(format!(r"\\{rest}"));
+    }
+    if let Some(rest) = s.strip_prefix(r"\\?\") {
+        return std::path::PathBuf::from(rest);
+    }
+    p
+}
+
 fn tessdata_dir(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
-    app.path().resource_dir().map(|d| d.join("tessdata")).ok().filter(|p| p.is_dir())
+    app.path().resource_dir().map(|d| plain_path(d.join("tessdata"))).ok().filter(|p| p.is_dir())
 }
 
 /// OCR: acrescenta uma camada de texto invisível às páginas escaneadas.
@@ -314,19 +327,22 @@ async fn engine_warmup() -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
-/// Linhas de texto de todas as páginas (texto, caixa, tamanho, negrito, família, cor).
+/// Linhas editáveis de uma página (texto, caixa, tamanho, negrito, família, cor, `scanned`).
+/// Página escaneada: usa a camada de OCR ou faz o OCR na hora. Cabeçalho `page`.
 #[tauri::command]
-async fn text_lines(request: Request<'_>) -> Result<serde_json::Value, String> {
+async fn text_lines(app: tauri::AppHandle, request: Request<'_>) -> Result<serde_json::Value, String> {
+    let page: u32 = request.headers().get("page").and_then(|v| v.to_str().ok()).and_then(|v| v.parse().ok()).unwrap_or(0);
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Conteúdo inválido".into());
     };
     let bytes = bytes.clone();
+    let tessdata = tessdata_dir(&app).map(|p| p.to_string_lossy().to_string());
     tauri::async_runtime::spawn_blocking(move || {
         let input = temp_pdf("lines");
         std::fs::write(&input, &bytes).map_err(|e| e.to_string())?;
-        let r = engine_request(&serde_json::json!({ "cmd": "lines", "in": input }));
+        let r = engine_request(&serde_json::json!({ "cmd": "lines", "in": input, "page": page, "tessdata": tessdata }));
         let _ = std::fs::remove_file(&input);
-        r.map(|v| v.get("pages").cloned().unwrap_or(serde_json::Value::Null))
+        r.map(|v| v.get("lines").cloned().unwrap_or(serde_json::Value::Null))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -693,4 +709,17 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Auris PDF");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plain_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn remove_prefixo_verbatim() {
+        assert_eq!(plain_path(PathBuf::from(r"\\?\C:\Users\x\AppData\Local\Auris PDF\tessdata")), PathBuf::from(r"C:\Users\x\AppData\Local\Auris PDF\tessdata"));
+        assert_eq!(plain_path(PathBuf::from(r"\\?\UNC\servidor\pasta")), PathBuf::from(r"\\servidor\pasta"));
+        assert_eq!(plain_path(PathBuf::from(r"C:\normal")), PathBuf::from(r"C:\normal"));
+    }
 }

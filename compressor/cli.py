@@ -33,8 +33,8 @@ def servir() -> int:
                 from edit_text import editar
                 r = editar(req["in"], req["out"], req["edits"])
             elif cmd == "lines":
-                from edit_text import todas_linhas
-                r = {"pages": todas_linhas(req["in"])}
+                from edit_text import linhas
+                r = {"lines": linhas(req["in"], int(req["page"]), req.get("tessdata"))}
             elif cmd == "ping":
                 r = {"ok": True}
             else:

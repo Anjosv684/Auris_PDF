@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
 } from "lucide-react";
@@ -15,21 +16,38 @@ import {
 import { removeWhite, uid } from "../lib/util";
 import { runTask } from "../lib/store";
 
+/** Botão com menu suspenso. O menu abre por cima de tudo (portal + posição fixa), assim não é
+ *  cortado pela barra de ferramentas, que rola na horizontal. */
 export function Menu({ icon, label, title, children, right }: { icon: React.ReactNode; label?: string; title: string; children: (close: () => void) => React.ReactNode; right?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const f = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const f = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !pop.current?.contains(t)) setOpen(false);
+    };
+    const close = () => setOpen(false);
     window.addEventListener("pointerdown", f);
-    return () => window.removeEventListener("pointerdown", f);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("pointerdown", f);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
+  const toggle = () => {
+    const r = ref.current!.getBoundingClientRect();
+    setPos(right ? { top: r.bottom + 6, right: Math.max(6, window.innerWidth - r.right) } : { top: r.bottom + 6, left: Math.max(6, Math.min(r.left, window.innerWidth - 246)) });
+    setOpen(!open);
+  };
   return (
     <div className="menu-wrap" ref={ref}>
-      <button className={`ib ${label ? "label" : ""} ${open ? "on" : ""}`} title={title} onClick={() => setOpen(!open)}>
+      <button className={`ib ${label ? "label" : ""} ${open ? "on" : ""}`} title={title} onClick={toggle}>
         {icon}{label}
       </button>
-      {open && <div className={`menu ${right ? "right" : ""}`}>{children(() => setOpen(false))}</div>}
+      {open && createPortal(<div ref={pop} className="menu menu-pop" style={pos}>{children(() => setOpen(false))}</div>, document.body)}
     </div>
   );
 }
