@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import type { Obj, TextObj } from "../lib/types";
 import { uid } from "../lib/util";
 import { viewerApi } from "../lib/viewerApi";
+import { FeatureIcon } from "./icons";
 
 const CREATE_TOOLS = new Set(["highlight", "rect", "ellipse", "line", "arrow", "ink", "text"]);
 const STICKY = new Set(["ink", "highlight"]);
@@ -363,7 +364,7 @@ const ObjView = memo(function ObjView({ o, sel, editing, style, onDown, onMove, 
     case "sigfield":
       return (
         <div className={`${cls} sig-obj`} {...common}>
-          <div>🔏 Assinatura digital<br /><span style={{ fontWeight: 400, opacity: 0.8 }}>posicione e clique em “Assinar”</span></div>
+          <div><FeatureIcon n="assinatura-digital" size={16} className="sig-obj-ic" /> Assinatura digital<br /><span style={{ fontWeight: 400, opacity: 0.8 }}>posicione e clique em “Assinar”</span></div>
           {handles}
         </div>
       );

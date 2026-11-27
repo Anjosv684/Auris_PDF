@@ -3,8 +3,9 @@ import { FolderOpen, FileText, FileDown } from "lucide-react";
 import { useStore } from "../lib/store";
 import { openFiles, openPaths, recents } from "../lib/actions";
 import { isApp } from "../lib/platform";
+import { FeatureIcon, type Feature } from "./icons";
 
-const CARDS = [
+const CARDS: { icon: Feature; t: string; d: string; a: () => unknown }[] = [
   { icon: "juntar", t: "Juntar PDFs", d: "Una vários arquivos em um só, na ordem que quiser", a: () => useStore.getState().openDialog({ kind: "merge" }) },
   { icon: "dividir", t: "Dividir PDF", d: "Separe por intervalos, a cada N páginas ou página por página", a: () => useStore.getState().openDialog({ kind: "split" }) },
   { icon: "comprimir", t: "Comprimir PDF", d: "Reduza o tamanho para enviar por WhatsApp e e-mail", a: () => useStore.getState().openDialog({ kind: "compress" }) },
@@ -21,13 +22,13 @@ export function Home() {
       <div className="sub">Abra, edite, assine e organize seus PDFs — rápido e 100% no seu computador.</div>
       <div className={`drop ${over ? "over" : ""}`} onClick={openFiles}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={() => setOver(false)}>
-        <FolderOpen size={34} color="#5aa2f5" />
+        <FolderOpen size={34} className="ic-accent" />
         <div className="big">Arraste PDFs aqui ou clique para abrir</div>
       </div>
       <div className="cards">
         {CARDS.map((c) => (
           <button key={c.t} className="card" onClick={c.a}>
-            <img className="ic" src={`/icons/${c.icon}.png`} alt="" draggable={false} />
+            <div className="ic"><FeatureIcon n={c.icon} size={20} /></div>
             <div><b>{c.t}</b><span>{c.d}</span></div>
           </button>
         ))}
@@ -37,7 +38,7 @@ export function Home() {
           <h3>Recentes</h3>
           {rec.map((p) => (
             <div key={p} className="recent-item" onClick={() => openPaths([p])}>
-              <FileText size={16} color="#e5484d" /> {p.split(/[\\/]/).pop()} <small>{p}</small>
+              <FileText size={16} className="ic-accent" /> {p.split(/[\\/]/).pop()} <small>{p}</small>
             </div>
           ))}
         </div>

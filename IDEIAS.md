@@ -5,7 +5,7 @@ Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
 ## Para a próxima versão (1.0.3)
 
-_(nada ainda)_
+- [x] **Ícones padronizados**: toda a interface em Lucide outline (traço único de 1,75px, azul claro ou branco), no lugar dos ícones coloridos da prancha. Ícone do programa e dos arquivos .pdf continuam.
 
 ## Ideias para depois
 

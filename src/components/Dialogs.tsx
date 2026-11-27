@@ -12,9 +12,10 @@ import { getDoc } from "../lib/docs";
 import { openPdf } from "../lib/pdfjs";
 import { appVersion, checkForUpdate } from "../lib/updater";
 import { PrintDialog } from "./PrintDialog";
+import { FeatureIcon, type Feature } from "./icons";
 import type { CertInfo, Tab } from "../lib/types";
 
-function Modal({ title, icon, children, foot, wide, onClose }: { title: React.ReactNode; icon?: string; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
+function Modal({ title, icon, children, foot, wide, onClose }: { title: React.ReactNode; icon?: Feature; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
   const close = onClose ?? (() => useStore.getState().openDialog(null));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -24,7 +25,7 @@ function Modal({ title, icon, children, foot, wide, onClose }: { title: React.Re
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className={`modal ${wide ? "wide" : ""}`}>
-        <div className="modal-head">{icon && <img className="modal-ic" src={`/icons/${icon}.png`} alt="" draggable={false} />}<h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
+        <div className="modal-head">{icon && <FeatureIcon n={icon} size={18} className="modal-ic" />}<h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
         <div className="modal-body">{children}</div>
         {foot && <div className="modal-foot">{foot}</div>}
       </div>
@@ -459,7 +460,7 @@ function SignDialog() {
               const exp = new Date(c.notAfter) < new Date();
               return (
                 <div key={c.thumbprint} className={`cert ${picked === c.thumbprint ? "on" : ""}`} onClick={() => setPicked(c.thumbprint)}>
-                  <KeyRound size={18} color="#5aa2f5" />
+                  <KeyRound size={18} className="ic-accent" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600 }}>{s?.name || c.subject}</div>
                     <div className="meta">{s?.doc ? (s.doc.length === 14 ? "CNPJ " : "CPF ") + s.doc + " • " : ""}{s?.issuer || c.issuer} • válido até {fmtD(c.notAfter)}</div>

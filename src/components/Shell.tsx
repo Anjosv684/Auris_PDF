@@ -11,6 +11,7 @@ import { isApp, openDefaultAppsSettings, openExternal } from "../lib/platform";
 import { verifyPdf, type SigCheck } from "../lib/sign";
 import { checkForUpdate, useUpdate } from "../lib/updater";
 import { Menu } from "./Toolbar";
+import { FeatureIcon } from "./icons";
 import type { Tab } from "../lib/types";
 
 export function TopBar() {
@@ -137,7 +138,7 @@ export function SigPanel() {
   return (
     <div className="sig-panel">
       <div className="row" style={{ flex: "none" }}>
-        <img className="modal-ic" src="/icons/verificar.png" alt="" draggable={false} style={{ flex: "none" }} /><b style={{ flex: 1, fontSize: 14 }}>Assinaturas</b>
+        <FeatureIcon n="verificar" size={18} className="modal-ic" /><b style={{ flex: 1, fontSize: 14 }}>Assinaturas</b>
         <button className="ib" title="Fechar painel" style={{ flex: "none" }} onClick={() => useStore.getState().set({ sigPanel: false })}><X size={16} /></button>
       </div>
       {!list && <div className="muted">Verificando…</div>}

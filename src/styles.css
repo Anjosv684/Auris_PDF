@@ -397,9 +397,10 @@ button { cursor: pointer; }
 .print-job .txt { flex: 1; min-width: 0; }
 .print-job .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ---------------- ícones Auris ---------------- */
-.card img.ic { width: 44px; height: 44px; border-radius: 0; filter: drop-shadow(0 4px 10px rgba(0,0,0,.3)); }
-.modal-ic { width: 30px; height: 30px; flex: none; filter: drop-shadow(0 3px 8px rgba(0,0,0,.3)); }
-.tb-ic { width: 22px; height: 22px; display: block; flex: none; }
-.ib:disabled .tb-ic { filter: grayscale(.6); }
-.menu .tb-ic { width: 18px; height: 18px; }
+/* ---------------- ícones (Lucide outline, traço único) ---------------- */
+:root { --icon-accent: #8ec2ff; }
+svg.lucide { stroke-width: 1.75; flex: none; }
+.ic-accent { color: var(--icon-accent); }
+.modal-ic { color: var(--icon-accent); flex: none; }
+.card .ic { background: rgba(142,194,255,.10); border: 1px solid rgba(142,194,255,.18); color: var(--icon-accent); }
+.sig-obj-ic { vertical-align: -3px; margin-right: 2px; }

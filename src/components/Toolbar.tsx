@@ -3,6 +3,7 @@ import {
   FolderOpen, Save, FilePenLine, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
+import { FeatureIcon } from "./icons";
 import type { Obj, Tool } from "../lib/types";
 import { viewerApi } from "../lib/viewerApi";
 import {
@@ -10,9 +11,6 @@ import {
 } from "../lib/actions";
 import { removeWhite, uid } from "../lib/util";
 import { runTask } from "../lib/store";
-
-/** Ícone Auris (public/icons) para os botões de função. */
-const Ic = ({ n }: { n: string }) => <img className="tb-ic" src={`/icons/${n}.png`} alt="" draggable={false} />;
 
 export function Menu({ icon, label, title, children, right }: { icon: React.ReactNode; label?: string; title: string; children: (close: () => void) => React.ReactNode; right?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -76,7 +74,7 @@ export function Toolbar() {
       <button className="ib" title="Abrir (Ctrl+O)" onClick={openFiles}><FolderOpen size={17} /></button>
       <button className="ib" title="Salvar (Ctrl+S)" onClick={() => saveTab()} disabled={!tab}><Save size={17} /></button>
       <button className="ib" title="Salvar como… (Ctrl+Shift+S)" onClick={() => saveTab(true)} disabled={!tab}><FilePenLine size={17} /></button>
-      <button className="ib" title={"Imprimir (Ctrl+P)\nImpressão rápida: Ctrl+Shift+P"} onClick={printTab} disabled={!tab}><Ic n="imprimir" /></button>
+      <button className="ib" title={"Imprimir (Ctrl+P)\nImpressão rápida: Ctrl+Shift+P"} onClick={printTab} disabled={!tab}><FeatureIcon n="imprimir" /></button>
       <div className="sep" />
       <button className="ib" title="Desfazer (Ctrl+Z)" onClick={s.undo} disabled={!tab?.past.length}><Undo2 size={17} /></button>
       <button className="ib" title="Refazer (Ctrl+Y)" onClick={s.redo} disabled={!tab?.future.length}><Redo2 size={17} /></button>
@@ -86,7 +84,7 @@ export function Toolbar() {
       ))}
       {s.view === "doc" && <>
         <button className="ib" title="Inserir imagem (ou cole com Ctrl+V / arraste)" onClick={pickAndAddImage}><ImagePlus size={17} /></button>
-        <Menu icon={<Ic n="carimbo" />} title="Carimbos">
+        <Menu icon={<FeatureIcon n="carimbo" />} title="Carimbos">
           {(close) => <>
             {STAMPS.map((x) => (
               <button key={x.label} onClick={() => { addStamp(x.label, x.color); close(); }}>
@@ -97,22 +95,22 @@ export function Toolbar() {
             <button onClick={() => { const l = prompt("Texto do carimbo:"); if (l) addStamp(l.toUpperCase(), "#185FA5"); close(); }}>Personalizado…</button>
           </>}
         </Menu>
-        <button className="ib" title="Assinatura manuscrita / rubrica" onClick={() => s.openDialog({ kind: "signature-pad" })}><Ic n="assinatura-manuscrita" /></button>
+        <button className="ib" title="Assinatura manuscrita / rubrica" onClick={() => s.openDialog({ kind: "signature-pad" })}><FeatureIcon n="assinatura-manuscrita" /></button>
         <div className="sep" />
         <button className="ib label" title="Assinar com certificado digital ICP-Brasil (A1/A3)" onClick={() => { addSigField(); s.openDialog({ kind: "sign" }); }}>
-          <Ic n="assinatura-digital" /> Assinar
+          <FeatureIcon n="assinatura-digital" /> Assinar
         </button>
-        <button className={`ib ${s.sigPanel ? "on" : ""}`} title="Verificar assinaturas digitais" onClick={() => s.set({ sigPanel: !s.sigPanel })}><Ic n="verificar" /></button>
+        <button className={`ib ${s.sigPanel ? "on" : ""}`} title="Verificar assinaturas digitais" onClick={() => s.set({ sigPanel: !s.sigPanel })}><FeatureIcon n="verificar" /></button>
       </>}
       <div className="sep" />
-      <button className={`ib label ${s.view === "organize" ? "on" : ""}`} title="Organizar páginas" onClick={organize}><Ic n="organizar" /> Organizar</button>
-      <button className="ib" title="Juntar PDFs" onClick={() => s.openDialog({ kind: "merge" })}><Ic n="juntar" /></button>
-      <button className="ib" title="Dividir PDF" onClick={() => s.openDialog({ kind: "split" })}><Ic n="dividir" /></button>
-      <button className="ib" title="Comprimir PDF" onClick={() => s.openDialog({ kind: "compress" })}><Ic n="comprimir" /></button>
+      <button className={`ib label ${s.view === "organize" ? "on" : ""}`} title="Organizar páginas" onClick={organize}><FeatureIcon n="organizar" /> Organizar</button>
+      <button className="ib" title="Juntar PDFs" onClick={() => s.openDialog({ kind: "merge" })}><FeatureIcon n="juntar" /></button>
+      <button className="ib" title="Dividir PDF" onClick={() => s.openDialog({ kind: "split" })}><FeatureIcon n="dividir" /></button>
+      <button className="ib" title="Comprimir PDF" onClick={() => s.openDialog({ kind: "compress" })}><FeatureIcon n="comprimir" /></button>
       <Menu icon={<MoreHorizontal size={17} />} title="Mais ferramentas">
         {(close) => <>
           <button onClick={() => { s.openDialog({ kind: "export-images" }); close(); }}><FileDown size={16} /> Exportar páginas como imagem</button>
-          <button onClick={() => { s.openDialog({ kind: "images" }); close(); }}><Ic n="imagens-pdf" /> Imagens → PDF</button>
+          <button onClick={() => { s.openDialog({ kind: "images" }); close(); }}><FeatureIcon n="imagens-pdf" size={16} /> Imagens → PDF</button>
           <hr />
           <button onClick={() => { saveTab(true); close(); }}><Save size={16} /> Salvar como… <span className="k">Ctrl+Shift+S</span></button>
         </>}

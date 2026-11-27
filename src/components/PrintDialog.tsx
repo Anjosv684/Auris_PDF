@@ -13,6 +13,7 @@ import {
   type PrintSettings, type PrintSource, type PageChoice,
 } from "../lib/print";
 import type { Tab } from "../lib/types";
+import { FeatureIcon } from "./icons";
 
 type Item = { src: PrintSource; tab?: Tab };
 const A4: PrinterCaps = { duplex: false, color: true, paperW: 595.3, paperH: 841.9, marginL: 12, marginT: 12, marginR: 12, marginB: 12 };
@@ -202,7 +203,7 @@ export function PrintDialog({ d }: { d: Extract<Dialog, { kind: "print" }> }) {
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal print-modal">
         <div className="modal-head">
-          <img className="modal-ic" src="/icons/imprimir.png" alt="" draggable={false} /><h2>Imprimir</h2>
+          <FeatureIcon n="imprimir" size={18} className="modal-ic" /><h2>Imprimir</h2>
           <button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button>
         </div>
         <div className="print-body">
