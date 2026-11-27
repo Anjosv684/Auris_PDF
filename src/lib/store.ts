@@ -9,6 +9,7 @@ export type Dialog =
   | { kind: "images"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "export-images" }
   | { kind: "sign" }
+  | { kind: "sign-batch"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "signature-pad" }
   | { kind: "password"; retry: boolean; resolve: (p: string | null) => void }
   | { kind: "print"; files?: { name: string; bytes: Uint8Array }[] }

@@ -599,3 +599,40 @@ html { color-scheme: dark; }
 .th-split { position: relative; }
 .th-half { position: absolute; inset: 0; clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
 @media (max-width: 560px) { .th-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- assinar PDFs (lote) ---------- */
+.modal.sb-modal { width: min(1060px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+.sb-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px; align-items: start; }
+.sb-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sb-side { position: sticky; top: 0; }
+.sb-files { max-height: 190px; }
+.sb-add-big { display: flex; align-items: center; justify-content: center; gap: 8px; height: 64px; border: 2px dashed var(--line-2, var(--line)); border-radius: 12px; background: transparent; color: var(--text-2); font-weight: 600; }
+.sb-add-big:hover { border-color: var(--blue-3); color: var(--text); }
+.sb-pad { height: 150px; border: 1.5px dashed color-mix(in srgb, var(--blue-3) 55%, #9aa8bb); }
+.saved-sig.on { border-color: var(--blue-3); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue-3) 35%, transparent); }
+.sb-preview { position: relative; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 14px rgba(0,0,0,.28); background: #fff; user-select: none; touch-action: none; }
+.sb-preview img { display: block; width: 100%; pointer-events: none; }
+.sb-preview.empty { aspect-ratio: 1 / 1.414; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #6b7a90; text-align: center; padding: 20px; font-size: 12.5px; background: color-mix(in srgb, #fff 92%, var(--blue-3)); }
+.sb-rect { position: absolute; border: 2px dashed var(--blue-3, #2f80ed); background: rgba(47,128,237,.08); border-radius: 3px; cursor: move; display: flex; align-items: stretch; }
+.sb-rect:hover { background: rgba(47,128,237,.14); }
+.sb-rect.solid, .sb-rect.solid:hover { background: #f2f7ff; }
+.sb-rect .sb-img { width: 100%; height: 100%; object-fit: contain; }
+.sb-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--blue-3, #2f80ed); border: 2px solid #fff; cursor: nwse-resize; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.sb-cert { flex: 1; display: flex; align-items: center; gap: 4px; overflow: hidden; padding: 2px 4px; color: #0d1a33; font-size: 7px; line-height: 1.25; }
+.sb-cert img { max-height: 90%; max-width: 40%; object-fit: contain; }
+.sb-cert > div { display: flex; flex-direction: column; min-width: 0; }
+.sb-cert b { font-size: 8.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-cert small { font-size: 6.5px; color: #4a5568; white-space: nowrap; }
+.sb-cert.invisible { justify-content: center; text-align: center; color: #2f5f9a; font-size: 9px; flex-direction: column; }
+.sb-presets { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.sb-presets button { border: 1px solid var(--line); background: var(--glass); color: var(--text-2); border-radius: 7px; padding: 4px 8px; font-size: 12px; }
+.sb-presets button:hover { border-color: var(--blue-3); color: var(--text); }
+.sb-spin { animation: spin .8s linear infinite; flex: none; }
+@media (max-width: 900px) { .sb-grid { grid-template-columns: 1fr; } .sb-side { position: static; } }
+
+/* ---------- botões da janela (sem a barra do Windows) ---------- */
+.win-ctrls { display: flex; align-self: stretch; margin: 0 -8px 0 6px; }
+.win-ctrls button { width: 46px; border: none; background: transparent; color: var(--text); display: grid; place-items: center; opacity: .85; transition: background .1s; }
+.win-ctrls button:hover { background: var(--glass-2); opacity: 1; }
+.win-ctrls button.close:hover { background: #e81123; color: #fff; }
+.win-ctrls button.close:active { background: #c50f1f; }

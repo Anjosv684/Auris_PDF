@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
+  Files, FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
 import { isApp } from "../lib/platform";
@@ -15,10 +15,11 @@ import {
 } from "../lib/actions";
 import { removeWhite, uid } from "../lib/util";
 import { runTask } from "../lib/store";
+import { openBatch } from "./SignBatch";
 
 /** Botão com menu suspenso. O menu abre por cima de tudo (portal + posição fixa), assim não é
  *  cortado pela barra de ferramentas, que rola na horizontal. */
-export function Menu({ icon, label, title, children, right }: { icon: React.ReactNode; label?: string; title: string; children: (close: () => void) => React.ReactNode; right?: boolean }) {
+export function Menu({ icon, label, title, children, right }: { icon: React.ReactNode; label?: React.ReactNode; title: string; children: (close: () => void) => React.ReactNode; right?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
@@ -123,9 +124,12 @@ export function Toolbar() {
         </Menu>
         <button className="ib" title="Assinatura manuscrita / rubrica" onClick={() => s.openDialog({ kind: "signature-pad" })}><FeatureIcon n="assinatura-manuscrita" /></button>
         <div className="sep" />
-        <button className="ib label" title="Assinar com certificado digital ICP-Brasil (A1/A3)" onClick={() => { addSigField(); s.openDialog({ kind: "sign" }); }}>
-          <FeatureIcon n="assinatura-digital" /> <span className="ib-txt">Assinar</span>
-        </button>
+        <Menu icon={<FeatureIcon n="assinatura-digital" />} label={<> <span className="ib-txt">Assinar</span></>} title="Assinar (certificado digital, carimbo ou à mão)">
+          {(close) => <>
+            <button onClick={() => { close(); addSigField(); s.openDialog({ kind: "sign" }); }}><FeatureIcon n="assinatura-digital" size={16} /> Assinar este PDF com certificado</button>
+            <button onClick={() => { close(); openBatch(); }}><Files size={16} /> Assinar vários PDFs de uma vez…</button>
+          </>}
+        </Menu>
         <button className={`ib ${s.sigPanel ? "on" : ""}`} title="Verificar assinaturas digitais" onClick={() => s.set({ sigPanel: !s.sigPanel })}><FeatureIcon n="verificar" /></button>
       </>}
       <div className="sep" />

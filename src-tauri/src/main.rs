@@ -574,9 +574,6 @@ try {
   Add-Type -AssemblyName System.Security
   $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Thumbprint -eq $env:AURIS_TP } | Select-Object -First 1
   if (-not $cert) { throw 'Certificado não encontrado. Verifique se o token está conectado.' }
-  $data = [System.IO.File]::ReadAllBytes($env:AURIS_IN)
-  $ci = New-Object System.Security.Cryptography.Pkcs.ContentInfo -ArgumentList @(,$data)
-  $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms -ArgumentList $ci, $true
   $signer = New-Object System.Security.Cryptography.Pkcs.CmsSigner -ArgumentList $cert
   $signer.DigestAlgorithm = New-Object System.Security.Cryptography.Oid -ArgumentList '2.16.840.1.101.3.4.2.1'
   $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
@@ -591,8 +588,14 @@ try {
     $attr = New-Object System.Security.Cryptography.AsnEncodedData -ArgumentList '1.2.840.113549.1.9.16.2.47', $ess
     [void]$signer.SignedAttributes.Add($attr)
   }
-  $cms.ComputeSignature($signer, $false)
-  [Convert]::ToBase64String($cms.Encode())
+  # vários arquivos no mesmo processo: o token pede o PIN uma vez só
+  foreach ($f in ($env:AURIS_IN -split '\|')) {
+    $data = [System.IO.File]::ReadAllBytes($f)
+    $ci = New-Object System.Security.Cryptography.Pkcs.ContentInfo -ArgumentList @(,$data)
+    $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms -ArgumentList $ci, $true
+    $cms.ComputeSignature($signer, $false)
+    [Console]::Out.WriteLine([Convert]::ToBase64String($cms.Encode()))
+  }
 } catch {
   $m = $_.Exception.Message
   if ($_.Exception.InnerException) { $m = $_.Exception.InnerException.Message }
@@ -630,32 +633,55 @@ async fn list_certificates() -> Result<Vec<CertInfo>, String> {
 
 #[tauri::command]
 async fn sign_with_certificate(thumbprint: String, data: String, ess_attr: String) -> Result<String, String> {
+    let mut v = sign_many(thumbprint, vec![data], ess_attr).await?;
+    v.pop().ok_or_else(|| "O certificado não retornou assinatura.".into())
+}
+
+/** Assina vários conteúdos com o mesmo certificado num só processo (PIN do token uma vez só). */
+#[tauri::command]
+async fn sign_many_with_certificate(thumbprint: String, items: Vec<String>, ess_attr: String) -> Result<Vec<String>, String> {
+    sign_many(thumbprint, items, ess_attr).await
+}
+
+async fn sign_many(thumbprint: String, items: Vec<String>, ess_attr: String) -> Result<Vec<String>, String> {
     #[cfg(windows)]
     {
         use base64::Engine;
         if !thumbprint.chars().all(|c| c.is_ascii_hexdigit()) {
             return Err("Certificado inválido".into());
         }
-        let bytes = base64::engine::general_purpose::STANDARD.decode(data).map_err(|e| e.to_string())?;
+        if items.is_empty() {
+            return Ok(vec![]);
+        }
         let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-        let tmp = std::env::temp_dir().join(format!("auris-sign-{nanos}.bin"));
-        std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
-        let tmp_s = tmp.to_string_lossy().to_string();
+        let mut files = Vec::new();
+        let cleanup = |files: &Vec<std::path::PathBuf>| files.iter().for_each(|f| { let _ = std::fs::remove_file(f); });
+        for (i, d) in items.iter().enumerate() {
+            let bytes = match base64::engine::general_purpose::STANDARD.decode(d) {
+                Ok(b) => b,
+                Err(e) => { cleanup(&files); return Err(e.to_string()); }
+            };
+            let tmp = std::env::temp_dir().join(format!("auris-sign-{nanos}-{i}.bin"));
+            if let Err(e) = std::fs::write(&tmp, bytes) { cleanup(&files); return Err(e.to_string()); }
+            files.push(tmp);
+        }
+        let list = files.iter().map(|f| f.to_string_lossy().to_string()).collect::<Vec<_>>().join("|");
         let res = tauri::async_runtime::spawn_blocking(move || {
-            powershell(SIGN_PS, &[("AURIS_TP", thumbprint), ("AURIS_IN", tmp_s), ("AURIS_ESS", ess_attr)])
+            powershell(SIGN_PS, &[("AURIS_TP", thumbprint), ("AURIS_IN", list), ("AURIS_ESS", ess_attr)])
         })
         .await
-        .map_err(|e| e.to_string())?;
-        let _ = std::fs::remove_file(&tmp);
-        let b64 = res?;
-        if b64.is_empty() {
-            return Err("O certificado não retornou assinatura.".into());
+        .map_err(|e| e.to_string());
+        cleanup(&files);
+        let out = res??;
+        let sigs: Vec<String> = out.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).map(String::from).collect();
+        if sigs.len() < items.len() {
+            return Err("O certificado não retornou todas as assinaturas.".into());
         }
-        Ok(b64.lines().last().unwrap_or_default().trim().to_string())
+        Ok(sigs[sigs.len() - items.len()..].to_vec())
     }
     #[cfg(not(windows))]
     {
-        let _ = (thumbprint, data, ess_attr);
+        let _ = (thumbprint, items, ess_attr);
         Err("Certificados instalados só estão disponíveis no Windows.".into())
     }
 }
@@ -705,7 +731,8 @@ fn main() {
             print_pdf,
             cancel_print,
             list_certificates,
-            sign_with_certificate
+            sign_with_certificate,
+            sign_many_with_certificate
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Auris PDF");

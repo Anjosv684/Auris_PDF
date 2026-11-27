@@ -3,7 +3,7 @@
 Lista de pedidos para juntar várias melhorias numa atualização só.
 Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
-## Para a próxima versão (1.0.8)
+## Para a próxima versão (1.0.9)
 
 _(nada ainda)_
 
@@ -12,6 +12,16 @@ _(nada ainda)_
 _(nada ainda)_
 
 ## Já lançado
+
+### 1.0.8
+Assinatura em lote e janela integrada (27/11/2026):
+- **Assinar PDFs em lote:** nova tela "Assinar PDFs" (menu Assinar → "Assinar vários PDFs de uma vez", card da tela inicial, link na assinatura de um PDF).
+  - Escolhe vários PDFs, define o local da assinatura numa prévia da página (arrastar/redimensionar, atalhos esquerda/centro/direita; última, primeira, todas ou página N) e aplica em todos.
+  - Três jeitos: certificado digital (PAdES ICP-Brasil, A1 ou token A3 com PIN uma vez só para todos), carimbo pessoal em PNG (fica guardado) ou assinatura à mão.
+  - No certificado dá para incluir a rubrica/carimbo dentro do quadro da assinatura.
+  - Salva ao lado do original como "nome (assinado).pdf" (ou numa pasta escolhida), mostra ✓/erro por arquivo, botões "Abrir pasta" e "Abrir no Auris".
+  - Novo evento de uso: `assinar_lote` (tipo, arquivos).
+- **Barra da janela integrada:** sem a barra branca do Windows; minimizar, maximizar/restaurar e fechar ficam na barra do Auris (fechar fica vermelho no hover). Arrastar pela barra move a janela e o duplo clique maximiza. Fechar continua perguntando sobre alterações não salvas.
 
 ### 1.0.7
 Correções na edição de texto (27/11/2026):

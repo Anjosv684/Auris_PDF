@@ -7,6 +7,7 @@ import { closeTabSafe, openFiles } from "../lib/actions";
 import { getDoc } from "../lib/docs";
 import { renderPage } from "../lib/pdfjs";
 import { viewerApi } from "../lib/viewerApi";
+import { WindowControls } from "./WindowControls";
 import { isApp, openDefaultAppsSettings, openExternal } from "../lib/platform";
 import { verifyPdf, type SigCheck } from "../lib/sign";
 import { checkForUpdate, useUpdate } from "../lib/updater";
@@ -27,12 +28,12 @@ export function TopBar() {
   const activeId = useStore((s) => s.activeId);
   const setActive = useStore((s) => s.setActive);
   return (
-    <div className="topbar">
+    <div className="topbar" data-tauri-drag-region>
       <div className="brand" onClick={() => useStore.getState().set({ activeId: null })} title="Início">
         <img src="/brand/logo.png" alt="Auris" className="brand-logo" draggable={false} />
         <small className="brand-pdf">PDF</small>
       </div>
-      <div className="tabs">
+      <div className="tabs" data-tauri-drag-region>
         {tabs.map((t) => (
           <div key={t.id} className={`tab ${t.id === activeId ? "active" : ""}`} onClick={() => setActive(t.id)} title={t.path || t.name}
             onAuxClick={(e) => e.button === 1 && closeTabSafe(t.id)}>
@@ -43,7 +44,7 @@ export function TopBar() {
         ))}
         <button className="ib" title="Abrir PDF (Ctrl+O)" onClick={openFiles} style={{ alignSelf: "center" }}><Plus size={17} /></button>
       </div>
-      <div className="top-actions">
+      <div className="top-actions" data-tauri-drag-region>
         <Menu icon={<span style={{ position: "relative", display: "grid" }}><Settings size={17} />{hasUpdate && <span className="upd-dot" />}</span>} title={hasUpdate ? "Configurações • atualização disponível" : "Configurações"} right>
           {(close) => <>
             {isApp && <button onClick={() => { openDefaultAppsSettings(); close(); }}><MonitorCheck size={16} /> Definir como leitor padrão de PDF</button>}
@@ -76,6 +77,7 @@ export function TopBar() {
           </>}
         </Menu>
       </div>
+      <WindowControls />
     </div>
   );
 }

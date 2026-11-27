@@ -135,6 +135,14 @@ export async function signWithStore(thumbprint: string, data: Uint8Array, essAtt
   return b64ToBytes(out);
 }
 
+/** Vários conteúdos com o mesmo certificado, num processo só (o token pede o PIN uma vez). */
+export async function signManyWithStore(thumbprint: string, data: Uint8Array[], essAttrB64: string): Promise<Uint8Array[]> {
+  const { invoke } = await tauri();
+  const { bytesToB64, b64ToBytes } = await import("./util");
+  const out = await invoke<string[]>("sign_many_with_certificate", { thumbprint, items: data.map(bytesToB64), essAttr: essAttrB64 });
+  return out.map(b64ToBytes);
+}
+
 export async function openExternal(url: string) {
   if (isApp) {
     const { invoke } = await tauri();

@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Plus, ArrowUp, ArrowDown, Trash2, Usb, FileKey, Upload, Eraser, KeyRound, Check } from "lucide-react";
+import { X, Plus, ArrowUp, ArrowDown, Trash2, Upload, Eraser, KeyRound, Check, Files } from "lucide-react";
 import { useStore, runTask, getActiveTab, type Dialog } from "../lib/store";
 import { mergePdfs, extractPages, imagesToPdf, pdfToImages } from "../lib/pages";
 import { compressPdf, LEVELS, type Level } from "../lib/compress";
 import { buildPdf } from "../lib/export";
-import { pickFiles, saveAs, saveMany, isApp, writePath, listCertificates, compressNative, type PickedFile } from "../lib/platform";
+import { pickFiles, saveAs, saveMany, isApp, writePath, compressNative, type PickedFile } from "../lib/platform";
 import { fmtSize, baseName, parseRanges, uid, removeWhite, loadImage } from "../lib/util";
 import { addImageAt, flatten, openBytes, addSigField } from "../lib/actions";
-import { signerFromPfx, signerFromStore, signPdf, describeCert, certFromDer, type Signer } from "../lib/sign";
+import { signPdf } from "../lib/sign";
+import { useCertPicker } from "./CertPicker";
+import { SignBatchDialog, openBatch } from "./SignBatch";
 import { getDoc } from "../lib/docs";
 import { openPdf } from "../lib/pdfjs";
 import { appVersion, checkForUpdate } from "../lib/updater";
 import { PrintDialog } from "./PrintDialog";
 import { FeatureIcon, type Feature } from "./icons";
-import type { CertInfo, Tab } from "../lib/types";
+import type { Tab } from "../lib/types";
 
-function Modal({ title, icon, children, foot, wide, onClose }: { title: React.ReactNode; icon?: Feature; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void }) {
+export function Modal({ title, icon, children, foot, wide, onClose, cls }: { title: React.ReactNode; icon?: Feature; children: React.ReactNode; foot?: React.ReactNode; wide?: boolean; onClose?: () => void; cls?: string }) {
   const close = onClose ?? (() => useStore.getState().openDialog(null));
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -24,7 +26,7 @@ function Modal({ title, icon, children, foot, wide, onClose }: { title: React.Re
   }, []);
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className={`modal ${wide ? "wide" : ""}`}>
+      <div className={`modal ${wide ? "wide" : ""} ${cls ?? ""}`}>
         <div className="modal-head">{icon && <FeatureIcon n={icon} size={18} className="modal-ic" />}<h2>{title}</h2><button className="ib" title="Fechar (Esc)" onClick={close}><X size={17} /></button></div>
         <div className="modal-body">{children}</div>
         {foot && <div className="modal-foot">{foot}</div>}
@@ -46,6 +48,7 @@ export function Dialogs() {
     case "images": return <ImagesDialog d={d} />;
     case "export-images": return <ExportImagesDialog />;
     case "sign": return <SignDialog />;
+    case "sign-batch": return <SignBatchDialog d={d} />;
     case "signature-pad": return <SignaturePadDialog />;
     case "password": return <PasswordDialog d={d} />;
     case "print": return <PrintDialog d={d} />;
@@ -369,27 +372,12 @@ function ExportImagesDialog() {
 const REASONS = ["Concordo com o conteúdo do documento", "Aprovação", "Ciência", "Testemunha", "Sou o autor do documento", "Revisão"];
 
 function SignDialog() {
-  const [src, setSrc] = useState<"store" | "pfx">(isApp ? "store" : "pfx");
-  const [certs, setCerts] = useState<CertInfo[] | null>(null);
-  const [certErr, setCertErr] = useState("");
-  const [picked, setPicked] = useState<string | null>(null);
-  const [pfx, setPfx] = useState<PickedFile | null>(null);
-  const [pwd, setPwd] = useState("");
   const [visible, setVisible] = useState(true);
   const [showDoc, setShowDoc] = useState(true);
   const [reason, setReason] = useState(REASONS[0]);
   const [location, setLocation] = useState(() => localStorage.getItem("auris.loc") || "");
+  const cert = useCertPicker(() => sign());
   const tab = getActiveTab();
-
-  const loadCerts = () => {
-    setCerts(null);
-    setCertErr("");
-    listCertificates().then((c) => {
-      setCerts(c);
-      if (c.length === 1) setPicked(c[0].thumbprint);
-    }).catch((e) => setCertErr(String(e?.message || e)));
-  };
-  useEffect(() => { if (src === "store" && isApp && !certs) loadCerts(); }, [src]);
 
   if (!tab) return <Modal title="Assinar digitalmente" icon="assinatura-digital"><div className="muted">Abra o PDF que deseja assinar.</div></Modal>;
   const field = tab.objects.find((o) => o.type === "sigfield");
@@ -398,16 +386,7 @@ function SignDialog() {
     const st = useStore.getState();
     localStorage.setItem("auris.loc", location);
     await runTask("Assinando…", async () => {
-      let signer: Signer;
-      if (src === "pfx") {
-        if (!pfx) throw new Error("Escolha o arquivo do certificado A1 (.pfx).");
-        signer = signerFromPfx(pfx.bytes, pwd);
-      } else {
-        const c = certs?.find((x) => x.thumbprint === picked);
-        if (!c) throw new Error("Escolha um certificado.");
-        signer = signerFromStore(c);
-      }
-      if (signer.summary.validTo < new Date()) throw new Error(`Certificado vencido em ${signer.summary.validTo.toLocaleDateString("pt-BR")}.`);
+      const signer = cert.signer();
       const f = useStore.getState().tabs.find((t) => t.id === tab.id)!.objects.find((o) => o.type === "sigfield");
       const base = await flatten();
       if (!base) return;
@@ -415,7 +394,7 @@ function SignDialog() {
       const pdf = await getDoc(cur);
       const pageNo = f ? f.page : pdf.numPages - 1;
       const vp = (await pdf.getPage(pageNo + 1)).getViewport({ scale: 1 });
-      st.set({ busy: src === "store" ? "Assinando… (informe o PIN do token se solicitado)" : "Assinando…" });
+      st.set({ busy: cert.isStore ? "Assinando… (informe o PIN do token se solicitado)" : "Assinando…" });
       const signed = await signPdf(base, signer, {
         page: pageNo,
         rect: visible && f ? { x: f.x, y: f.y, w: f.w, h: f.h } : null,
@@ -435,55 +414,13 @@ function SignDialog() {
     });
   };
 
-  const fmtD = (s: string) => new Date(s).toLocaleDateString("pt-BR");
   return (
     <Modal title="Assinar com certificado digital" icon="assinatura-digital" wide foot={<>
-      <span className="muted" style={{ marginRight: "auto" }}>{field ? `Posição: página ${field.page + 1}` : "Assinatura sem posição definida"}</span>
-      <button className="btn" onClick={sign} disabled={src === "store" ? !picked : !pfx}><KeyRound size={16} /> Assinar</button>
+      <button className="btn ghost" style={{ marginRight: "auto" }} onClick={() => openBatch()}><Files size={15} /> Assinar vários PDFs de uma vez</button>
+      <span className="muted">{field ? `Página ${field.page + 1}` : "Sem posição"}</span>
+      <button className="btn" onClick={sign} disabled={!cert.ready}><KeyRound size={16} /> Assinar</button>
     </>}>
-      <div className="seg">
-        <button className={src === "store" ? "on" : ""} onClick={() => setSrc("store")}><Usb size={15} style={{ verticalAlign: -3 }} /> Token A3 / certificado instalado</button>
-        <button className={src === "pfx" ? "on" : ""} onClick={() => setSrc("pfx")}><FileKey size={15} style={{ verticalAlign: -3 }} /> Arquivo A1 (.pfx)</button>
-      </div>
-      {src === "store" && (
-        <div className="field">
-          <label>Certificados encontrados no Windows {isApp && <a href="#" style={{ color: "var(--blue-3)", fontWeight: 400 }} onClick={(e) => { e.preventDefault(); loadCerts(); }}>atualizar</a>}</label>
-          {!isApp && <div className="muted">Tokens A3 só podem ser usados no app instalado no Windows. Aqui no navegador, use o arquivo A1.</div>}
-          {isApp && !certs && !certErr && <div className="muted">Procurando certificados… conecte o token USB.</div>}
-          {certErr && <div className="muted" style={{ color: "var(--red)" }}>{certErr}</div>}
-          {certs && !certs.length && <div className="muted">Nenhum certificado com chave privada encontrado. Conecte o token e clique em atualizar.</div>}
-          <div className="cert-list">
-            {certs?.map((c) => {
-              let s;
-              try { s = describeCert(certFromDer(c.der)); } catch { s = null; }
-              const exp = new Date(c.notAfter) < new Date();
-              return (
-                <div key={c.thumbprint} className={`cert ${picked === c.thumbprint ? "on" : ""}`} onClick={() => setPicked(c.thumbprint)}>
-                  <KeyRound size={18} className="ic-accent" />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>{s?.name || c.subject}</div>
-                    <div className="meta">{s?.doc ? (s.doc.length === 14 ? "CNPJ " : "CPF ") + s.doc + " • " : ""}{s?.issuer || c.issuer} • válido até {fmtD(c.notAfter)}</div>
-                  </div>
-                  {s?.icp && <span className="badge ok">ICP-Brasil</span>}
-                  {exp && <span className="badge err">Vencido</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {src === "pfx" && (
-        <div className="row">
-          <div className="field">
-            <label>Arquivo do certificado</label>
-            <button className="btn ghost" onClick={async () => { const [f] = await pickFiles("pfx", false); if (f) setPfx(f); }}><Upload size={15} /> {pfx ? pfx.name : "Escolher .pfx / .p12"}</button>
-          </div>
-          <div className="field">
-            <label>Senha do certificado</label>
-            <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sign()} placeholder="••••••" />
-          </div>
-        </div>
-      )}
+      {cert.ui}
       <div className="row">
         <div className="field">
           <label>Motivo</label>

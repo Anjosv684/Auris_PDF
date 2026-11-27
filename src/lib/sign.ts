@@ -4,12 +4,13 @@ import forge from "node-forge";
 import {
   PDFDocument, PDFName, PDFHexString, PDFString, PDFNumber, PDFDict, PDFArray, PDFRef, StandardFonts,
   pushGraphicsState, popGraphicsState, setFillingRgbColor, setStrokingRgbColor, rectangle, fill, stroke,
-  setLineWidth, beginText, endText, setFontAndSize, moveText, showText, type PDFFont,
+  setLineWidth, beginText, endText, setFontAndSize, moveText, showText, concatTransformationMatrix, drawObject,
+  type PDFFont, type PDFImage,
 } from "pdf-lib";
 import { binaryToBytes, bytesToBinary, bytesToB64 } from "./util";
 import { hasSignatures, incrementalSave, snapshot } from "./incremental";
 import { loadForEdit, sanitize } from "./pdfcore";
-import { signWithStore } from "./platform";
+import { signWithStore, signManyWithStore } from "./platform";
 import type { CertInfo } from "./types";
 import { track } from "./telemetry";
 
@@ -98,6 +99,8 @@ export type Signer = {
   summary: CertSummary;
   /** recebe os bytes a assinar (ByteRange) e devolve o CMS DER */
   sign: (data: Uint8Array) => Promise<Uint8Array>;
+  /** vários de uma vez (token A3: o PIN é pedido uma vez só) */
+  signMany?: (data: Uint8Array[]) => Promise<Uint8Array[]>;
 };
 
 export function signerFromPfx(pfx: Uint8Array, password: string): Signer {
@@ -165,6 +168,10 @@ export function signerFromStore(c: CertInfo): Signer {
       const ess = bytesToB64(binaryToBytes(der(await essAttrValue(certBin))));
       return signWithStore(c.thumbprint, data, ess);
     },
+    signMany: async (data) => {
+      const ess = bytesToB64(binaryToBytes(der(await essAttrValue(certBin))));
+      return signManyWithStore(c.thumbprint, data, ess);
+    },
   };
 }
 
@@ -179,6 +186,8 @@ export type SignOptions = {
   reason: string;
   location: string;
   showDoc: boolean;
+  /** imagem (PNG) mostrada à esquerda do carimbo: rubrica ou carimbo pessoal */
+  image?: Uint8Array;
 };
 
 function maskDoc(d?: string) {
@@ -195,7 +204,7 @@ function nowBR() {
   return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR")} ${tz}`;
 }
 
-function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: CertSummary, o: SignOptions, f1: PDFFont, f2: PDFFont) {
+function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: CertSummary, o: SignOptions, f1: PDFFont, f2: PDFFont, img?: PDFImage) {
   const ops = [];
   const blue = [0.094, 0.373, 0.647] as const;
   ops.push(
@@ -203,8 +212,19 @@ function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: Cert
     pushGraphicsState(), setStrokingRgbColor(...blue), setLineWidth(0.8), rectangle(0.4, 0.4, w - 0.8, h - 0.8), stroke(), popGraphicsState(),
     pushGraphicsState(), setFillingRgbColor(...blue), rectangle(0, 0, Math.max(3, w * 0.015), h), fill(), popGraphicsState(),
   );
-  const pad = Math.max(6, w * 0.035);
-  const maxW = w - pad * 2;
+  let pad = Math.max(6, w * 0.035);
+  // imagem à esquerda, texto à direita
+  if (img) {
+    const ip = Math.max(3, h * 0.08);
+    const maxIw = w * 0.42 - ip, maxIh = h - ip * 2;
+    const k = Math.min(maxIw / img.width, maxIh / img.height);
+    const iw = img.width * k, ih = img.height * k;
+    ops.push(pushGraphicsState(), concatTransformationMatrix(iw, 0, 0, ih, ip + Math.max(3, w * 0.015), (h - ih) / 2), drawObject("Im1"), popGraphicsState());
+    pad = ip + Math.max(3, w * 0.015) + iw + ip;
+  }
+  const left = pad;
+  if (img) pad = Math.max(6, w * 0.035);
+  const maxW = w - left - pad;
   const lines: { t: string; f: PDFFont; k: number; c: readonly [number, number, number] }[] = [
     { t: "Assinado digitalmente por", f: f1, k: 0.8, c: [0.35, 0.4, 0.5] },
     { t: s.name || "Titular", f: f2, k: 1.15, c: [0.05, 0.1, 0.2] },
@@ -225,7 +245,7 @@ function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: Cert
     y -= base * l.k * 1.3;
     ops.push(
       beginText(), setFillingRgbColor(...l.c), setFontAndSize(l.f === f2 ? "F2" : "F1", size),
-      moveText(pad + 2, y + base * l.k * 0.3), showText(l.f.encodeText(t)), endText(),
+      moveText(left + 2, y + base * l.k * 0.3), showText(l.f.encodeText(t)), endText(),
     );
   }
   const r = (rot * Math.PI) / 180;
@@ -233,20 +253,27 @@ function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: Cert
   const stream = doc.context.formXObject(ops, {
     BBox: [0, 0, w, h],
     Matrix: [cos, sin, -sin, cos, 0, 0],
-    Resources: { Font: { F1: f1.ref, F2: f2.ref } },
+    Resources: { Font: { F1: f1.ref, F2: f2.ref }, ...(img ? { XObject: { Im1: img.ref } } : {}) },
   });
   return doc.context.register(stream);
 }
 
 export async function signPdf(bytes: Uint8Array, signer: Signer, o: SignOptions): Promise<Uint8Array> {
   track("assinar_digital");
+  const p = await prepareSignature(bytes, signer.summary, o);
+  return finishSignature(p, await signer.sign(p.toSign));
+}
+
+/** PDF pronto, com espaço reservado; falta só o CMS dos bytes em `toSign`. */
+export type PreparedSig = { out: Uint8Array; cStart: number; cEnd: number; toSign: Uint8Array };
+
+export async function prepareSignature(bytes: Uint8Array, s: CertSummary, o: SignOptions): Promise<PreparedSig> {
   const incremental = hasSignatures(bytes);
   const doc = await loadForEdit(bytes);
   const snap = incremental ? snapshot(doc) : null;
   const ctx = doc.context;
   const N = (s: string) => PDFName.of(s);
   const page = doc.getPage(o.page);
-  const s = signer.summary;
 
   // dicionário da assinatura com espaços reservados
   const sigDict = ctx.obj({
@@ -273,7 +300,11 @@ export async function signPdf(bytes: Uint8Array, signer: Signer, o: SignOptions)
     rect = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
     const f1 = await doc.embedFont(StandardFonts.Helvetica);
     const f2 = await doc.embedFont(StandardFonts.HelveticaBold);
-    apRef = appearance(doc, w, h, o.viewport.rotation, s, o, f1, f2);
+    let img: PDFImage | undefined;
+    if (o.image) {
+      try { img = await doc.embedPng(o.image); } catch { img = await doc.embedJpg(o.image); }
+    }
+    apRef = appearance(doc, w, h, o.viewport.rotation, s, o, f1, f2, img);
   }
 
   const acroExisting = doc.catalog.lookupMaybe(N("AcroForm"), PDFDict);
@@ -320,7 +351,10 @@ export async function signPdf(bytes: Uint8Array, signer: Signer, o: SignOptions)
   const toSign = new Uint8Array(cStart + (out.length - cEnd));
   toSign.set(out.subarray(0, cStart), 0);
   toSign.set(out.subarray(cEnd), cStart);
-  const cms = await signer.sign(toSign);
+  return { out, cStart, cEnd, toSign };
+}
+
+export function finishSignature({ out, cStart }: PreparedSig, cms: Uint8Array): Uint8Array {
   const hex = Array.from(cms, (b) => b.toString(16).padStart(2, "0")).join("").toUpperCase();
   if (hex.length > SIG_BYTES * 2) throw new Error("Assinatura maior que o espaço reservado.");
   out.set(new TextEncoder().encode(hex), cStart + 1);
