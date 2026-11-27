@@ -30,6 +30,8 @@ type State = {
   sidebar: boolean;
   search: boolean;
   sigPanel: boolean;
+  /** barrinha flutuante de giro do documento (preferência do usuário) */
+  pageBar: boolean;
   busy: string | null;
 
   openTab: (t: { name: string; path?: string; bytes: Uint8Array }) => string;
@@ -73,6 +75,7 @@ export const useStore = create<State>((set, get) => {
     sidebar: true,
     search: false,
     sigPanel: false,
+    pageBar: typeof localStorage === "undefined" || localStorage.getItem("auris.pagebar") !== "0",
     busy: null,
 
     openTab: ({ name, path, bytes }) => {

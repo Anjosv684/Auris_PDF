@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import {
-  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw,
+  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw, RotateCw,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
 import { closeTabSafe, openFiles } from "../lib/actions";
@@ -12,10 +12,12 @@ import { verifyPdf, type SigCheck } from "../lib/sign";
 import { checkForUpdate, useUpdate } from "../lib/updater";
 import { Menu } from "./Toolbar";
 import { FeatureIcon } from "./icons";
+import { setPageBar } from "./PageBar";
 import type { Tab } from "../lib/types";
 
 export function TopBar() {
   const hasUpdate = useUpdate((s) => s.status === "available");
+  const pageBar = useStore((s) => s.pageBar);
   const tabs = useStore((s) => s.tabs);
   const activeId = useStore((s) => s.activeId);
   const setActive = useStore((s) => s.setActive);
@@ -41,6 +43,9 @@ export function TopBar() {
           {(close) => <>
             {isApp && <button onClick={() => { openDefaultAppsSettings(); close(); }}><MonitorCheck size={16} /> Definir como leitor padrão de PDF</button>}
             <button onClick={() => { openExternal("https://validar.iti.gov.br"); close(); }}><ExternalLink size={16} /> Validador oficial do ITI</button>
+            <button onClick={() => { setPageBar(!pageBar); close(); }}>
+              <RotateCw size={16} /> Barra de giro do documento <span className="k">{pageBar ? "Ligada" : "Desligada"}</span>
+            </button>
             <hr />
             <button onClick={() => { checkForUpdate(true); close(); }}><RefreshCw size={16} /> Verificar atualizações</button>
             <button onClick={() => { useStore.getState().openDialog({ kind: "about" }); close(); }}><Info size={16} /> Sobre o Auris PDF</button>

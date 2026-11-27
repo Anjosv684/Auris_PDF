@@ -11,6 +11,10 @@ Pedidos de clientes (suporte Aliança Tur, 27/11/2026):
 - [x] **Digitalizar / OCR**: transformar PDF escaneado em PDF pesquisável (texto selecionável e com busca). Botão "OCR" na barra, cartão na tela inicial e aviso automático quando o PDF aberto parece escaneado.
 - [x] **Editar os textos do PDF**: ferramenta "Editar texto" (tecla X): clique numa linha, altere e aperte Enter. Mantém posição, tamanho, cor e negrito/itálico; dá para desfazer (Ctrl+Z).
 
+Pedidos internos (27/11/2026):
+- [x] **Botão direito na imagem colada**: girar 90°, espelhar na horizontal/vertical, trazer para frente / avançar / recuar / enviar para trás, remover fundo branco, repetir em todas as páginas, duplicar e excluir. A ordem das camadas também vale para formas, textos e carimbos.
+- [x] **Girar o documento**: barrinha discreta no centro inferior (quase transparente até passar o mouse) com girar à esquerda/direita. Dá para esconder no "x" da própria barra ou em Configurações → Barra de giro do documento.
+
 ## Ideias para depois
 
 _(nada ainda)_

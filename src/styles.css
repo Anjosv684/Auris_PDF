@@ -416,3 +416,19 @@ svg.lucide { stroke-width: 1.75; flex: none; }
 .te-line:hover { background: rgba(47,128,237,.12); outline: 1.5px solid var(--blue-2); }
 .te-input { position: absolute; pointer-events: auto; z-index: 2; margin: 0; padding: 0 2px; border: none; outline: 2px solid var(--blue-2); border-radius: 2px;
   background: #fff; resize: none; overflow: hidden; line-height: 1.2; white-space: pre; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+
+/* ---------------- menu do botão direito ---------------- */
+.menu.ctx-menu { position: fixed; top: auto; left: auto; min-width: 240px; z-index: 400; }
+
+/* ---------------- barrinha de giro do documento ---------------- */
+.page-bar {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px;
+  background: rgba(4, 30, 58, .72); border: 1px solid rgba(255,255,255,.10); backdrop-filter: blur(8px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35); opacity: .38; transition: opacity .2s ease;
+}
+.page-bar:hover, .page-bar:focus-within { opacity: 1; }
+.page-bar .ib { width: 28px; height: 28px; border-radius: 999px; }
+.page-bar .pb-sep { width: 1px; height: 16px; background: rgba(255,255,255,.14); }
+.page-bar .pb-close { width: 0; overflow: hidden; padding: 0; opacity: 0; transition: width .15s, opacity .15s; }
+.page-bar:hover .pb-close { width: 22px; opacity: .7; }

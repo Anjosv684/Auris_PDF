@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../lib/store";
 import type { Obj, TextObj } from "../lib/types";
@@ -6,6 +6,7 @@ import { uid } from "../lib/util";
 import { viewerApi } from "../lib/viewerApi";
 import { FeatureIcon } from "./icons";
 import { TextEditLayer } from "./TextEditLayer";
+import { ObjMenu, type ObjMenuState } from "./ObjMenu";
 
 const CREATE_TOOLS = new Set(["highlight", "rect", "ellipse", "line", "arrow", "ink", "text"]);
 const STICKY = new Set(["ink", "highlight"]);
@@ -23,6 +24,14 @@ export const Overlay = memo(function Overlay({ page, w, h }: { page: number; w: 
   const [ink, setInk] = useState<number[] | null>(null);
   const [guides, setGuides] = useState<Guides>({ v: [], h: [] });
   const [editing, setEditing] = useState<string | null>(null);
+  const [menu, setMenu] = useState<ObjMenuState>(null);
+  const openMenu = useCallback((e: React.MouseEvent, o: Obj) => {
+    if (editing === o.id) return; // no texto em edição, mantém o menu de copiar/colar
+    e.preventDefault();
+    e.stopPropagation();
+    useStore.getState().select(o.id);
+    setMenu({ id: o.id, x: e.clientX, y: e.clientY });
+  }, [editing]);
   const creating = CREATE_TOOLS.has(tool);
 
   const toPdf = (e: { clientX: number; clientY: number }) => {
@@ -231,6 +240,7 @@ export const Overlay = memo(function Overlay({ page, w, h }: { page: number; w: 
           onMove={onObjMove}
           onUp={onObjUp}
           onEdit={() => o.type === "text" && setEditing(o.id)}
+          onMenu={openMenu}
           onEditEnd={() => finishEdit(o.id)}
         />
       ))}
@@ -248,6 +258,7 @@ export const Overlay = memo(function Overlay({ page, w, h }: { page: number; w: 
         </svg>
       )}
       {tool === "edittext" && <TextEditLayer page={page} w={w} h={h} />}
+      {menu && <ObjMenu menu={menu} onClose={() => setMenu(null)} />}
       {guides.v.map((v, i) => <div key={"v" + i} className="guide v" style={{ left: pct(v, w) }} />)}
       {guides.h.map((v, i) => <div key={"h" + i} className="guide h" style={{ top: pct(v, h) }} />)}
     </div>
@@ -271,9 +282,10 @@ type ObjProps = {
   onUp: () => void;
   onEdit: () => void;
   onEditEnd: () => void;
+  onMenu: (e: React.MouseEvent, o: Obj) => void;
 };
 
-const ObjView = memo(function ObjView({ o, sel, editing, style, onDown, onMove, onUp, onEdit, onEditEnd }: ObjProps) {
+const ObjView = memo(function ObjView({ o, sel, editing, style, onDown, onMove, onUp, onEdit, onEditEnd, onMenu }: ObjProps) {
   const sf = "var(--scale-factor, 1)";
   const common = {
     style: { ...style, opacity: o.opacity },
@@ -281,6 +293,7 @@ const ObjView = memo(function ObjView({ o, sel, editing, style, onDown, onMove, 
     onPointerMove: onMove,
     onPointerUp: onUp,
     onDoubleClick: onEdit,
+    onContextMenu: (e: React.MouseEvent) => onMenu(e, o),
   };
   const handles = sel && !editing && (
     <>

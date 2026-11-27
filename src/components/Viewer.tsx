@@ -5,6 +5,7 @@ import { getDoc } from "../lib/docs";
 import { useStore, useActiveTab } from "../lib/store";
 import { viewerApi } from "../lib/viewerApi";
 import { Overlay } from "./Overlay";
+import { PageBar } from "./PageBar";
 import { addImageAt } from "../lib/actions";
 
 type Host = { el: HTMLDivElement; w: number; h: number };
@@ -203,6 +204,7 @@ export function Viewer() {
       >
         <div ref={viewerDivRef} className="pdfViewer" />
       </div>
+      <PageBar />
       {tab && hosts.map((h, i) => createPortal(<Overlay key={`${tab.id}-${tab.version}-${i}`} page={i} w={h.w} h={h.h} />, h.el, `${tab.id}-${i}`))}
     </div>
   );
