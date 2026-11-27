@@ -16,6 +16,8 @@ export function Viewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerDivRef = useRef<HTMLDivElement>(null);
   const [hosts, setHosts] = useState<Host[]>([]);
+  // de qual documento (aba:versão) são as páginas em `hosts`: só monta as camadas quando bate com a aba
+  const [hostsOf, setHostsOf] = useState("");
   const hostsRef = useRef<Host[]>([]);
   const loadedRef = useRef<{ id: string; version: number } | null>(null);
 
@@ -65,6 +67,8 @@ export function Viewer() {
       }
       hostsRef.current = list;
       setHosts(list);
+      const cur = loadedRef.current;
+      setHostsOf(cur ? `${cur.id}:${cur.version}` : "");
     });
     eventBus.on("pagechanging", (e: { pageNumber: number }) => {
       const st = useStore.getState();
@@ -205,7 +209,7 @@ export function Viewer() {
         <div ref={viewerDivRef} className="pdfViewer" />
       </div>
       <PageBar />
-      {tab && hosts.map((h, i) => createPortal(<Overlay key={`${tab.id}-${tab.version}-${i}`} page={i} w={h.w} h={h.h} />, h.el, `${tab.id}-${i}`))}
+      {tab && hostsOf === `${tab.id}:${tab.version}` && hosts.map((h, i) => createPortal(<Overlay key={`${tab.id}-${tab.version}-${i}`} page={i} w={h.w} h={h.h} />, h.el, `${tab.id}-${i}`))}
     </div>
   );
 }

@@ -141,7 +141,8 @@ def _familia_da_pagina(page, contexto: list[dict]) -> str | None:
     return max(votos, key=votos.get)
 
 
-def _editar_escaneado(page, area: pymupdf.Rect, texto: str, original: str, contexto: list[dict] | None = None):
+def _editar_escaneado(page, area: pymupdf.Rect, texto: str, original: str, contexto: list[dict] | None = None,
+                      mover: tuple[float, float] = (0.0, 0.0)):
     """Página escaneada: pinta a linha com a cor do papel (apagando os pixels da foto)
     e escreve o texto novo como texto de verdade, na cor da tinta."""
     # tudo é lido da imagem ANTES de apagar a linha
@@ -165,8 +166,31 @@ def _editar_escaneado(page, area: pymupdf.Rect, texto: str, original: str, conte
     base = area.y1 - (tam * 0.21 if any(c in _DESCE for c in ref) else tam * 0.02)
     for i, linha in enumerate(texto.split("\n")):
         if linha:
-            page.insert_text((area.x0, base + i * tam * 1.2), linha, fontsize=tam, color=tinta,
+            page.insert_text((area.x0 + mover[0], base + mover[1] + i * tam * 1.2), linha, fontsize=tam, color=tinta,
                              **_fonte(fam, negrito, False, linha))
+
+
+def _da_linha(span, area: pymupdf.Rect) -> bool:
+    """O trecho é da linha clicada (e não da vizinha que só encosta na caixa)?
+    Exige que a maior parte da altura e o meio do trecho estejam dentro da área."""
+    r = pymupdf.Rect(span["bbox"])
+    if r.height <= 0:
+        return False
+    sobra = min(r.y1, area.y1) - max(r.y0, area.y0)
+    meio = (r.y0 + r.y1) / 2
+    return sobra >= r.height * 0.6 and area.y0 - 1 <= meio <= area.y1 + 1 and r.x1 > area.x0 - 1 and r.x0 < area.x1 + 1
+
+
+def _vetor(page, mv) -> tuple[float, float]:
+    """Deslocamento pedido na tela (coordenadas que o usuário vê) convertido para a página sem giro."""
+    if not mv:
+        return (0.0, 0.0)
+    dx, dy = float(mv[0]), float(mv[1])
+    if page.rotation:
+        m = page.derotation_matrix
+        a, b = pymupdf.Point(0, 0) * m, pymupdf.Point(dx, dy) * m
+        return (b.x - a.x, b.y - a.y)
+    return (dx, dy)
 
 
 def editar(entrada: str, saida: str, edicoes: list[dict]) -> dict:
@@ -181,12 +205,13 @@ def editar(entrada: str, saida: str, edicoes: list[dict]) -> dict:
         if page.rotation:
             area = area * page.derotation_matrix
         texto = str(e.get("text", ""))
+        mover = _vetor(page, e.get("move"))
         if e.get("scanned"):
-            _editar_escaneado(page, area, texto, str(e.get("original", "")), e.get("context"))
+            _editar_escaneado(page, area, texto, str(e.get("original", "")), e.get("context"), mover)
             feitas += 1
             continue
         spans = [s for b in page.get_text("dict", clip=area)["blocks"] for l in b.get("lines", [])
-                 for s in l["spans"] if s["text"].strip() and s.get("alpha", 255) > 0]
+                 for s in l["spans"] if s["text"].strip() and s.get("alpha", 255) > 0 and _da_linha(s, area)]
         if not spans:
             continue
         ref = max(spans, key=lambda s: len(s["text"]))
@@ -205,6 +230,7 @@ def editar(entrada: str, saida: str, edicoes: list[dict]) -> dict:
                 negrito = bool(e["bold"])
             tam = float(e.get("size") or ref["size"])
             x, y = spans[0]["origin"]
+            x, y = x + mover[0], y + mover[1]
             for i, linha in enumerate(texto.split("\n")):
                 if linha:
                     page.insert_text((x, y + i * tam * 1.2), linha, fontsize=tam, color=_rgb(ref["color"]),
@@ -248,16 +274,42 @@ def _linhas_da_pagina(page, visiveis: bool, textpage=None) -> list[dict]:
                 spans = [s for s in l["spans"] if s["text"].strip() and s.get("alpha", 255) > 0]
             else:
                 spans = [s for s in l["spans"] if s["text"].strip() and s.get("alpha", 255) == 0]
-            if not spans:
-                continue
-            ref = max(spans, key=lambda s: len(s["text"]))
-            fam, negrito, italico = _estilo(ref)
-            r = pymupdf.Rect(spans[0]["bbox"])
-            for s in spans[1:]:
-                r |= pymupdf.Rect(s["bbox"])
-            if rot is not None:
-                r = r * rot
-            out.append({"text": " ".join(s["text"].strip() for s in spans), "bbox": [r.x0, r.y0, r.x1, r.y1],
-                        "size": ref["size"], "bold": negrito, "italic": italico, "family": fam,
-                        "color": "#%06x" % ref["color"]})
+            for grupo in _colunas(spans):
+                out.append(_linha(grupo, rot))
     return out
+
+
+def _colunas(spans: list) -> list[list]:
+    """Separa trechos da mesma linha que estão longe um do outro (colunas de tabela,
+    "Nome: ...      Data: ..."), para cada pedaço ser editado sozinho."""
+    spans = sorted(spans, key=lambda s: s["bbox"][0])
+    grupos = [[spans[0]]]
+    for s in spans[1:]:
+        ant = grupos[-1][-1]
+        vao = s["bbox"][0] - ant["bbox"][2]
+        if vao > max(ant["size"], s["size"]) * 1.6:
+            grupos.append([s])
+        else:
+            grupos[-1].append(s)
+    return grupos
+
+
+def _linha(spans: list, rot) -> dict:
+    ref = max(spans, key=lambda s: len(s["text"]))
+    fam, negrito, italico = _estilo(ref)
+    r = pymupdf.Rect(spans[0]["bbox"])
+    for s in spans[1:]:
+        r |= pymupdf.Rect(s["bbox"])
+    if rot is not None:
+        r = r * rot
+    texto = ""
+    for i, s in enumerate(spans):
+        t = s["text"]
+        if i and not texto.endswith(" ") and not t.startswith(" "):
+            # só põe espaço se houver um vão visível entre os trechos
+            if s["bbox"][0] - spans[i - 1]["bbox"][2] > s["size"] * 0.15:
+                t = " " + t
+        texto += t
+    return {"text": texto.strip(), "bbox": [r.x0, r.y0, r.x1, r.y1],
+            "size": ref["size"], "bold": negrito, "italic": italico, "family": fam,
+            "color": "#%06x" % ref["color"]}

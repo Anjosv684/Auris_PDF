@@ -3,7 +3,7 @@
 Lista de pedidos para juntar várias melhorias numa atualização só.
 Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
-## Para a próxima versão (1.0.7)
+## Para a próxima versão (1.0.8)
 
 _(nada ainda)_
 
@@ -12,6 +12,15 @@ _(nada ainda)_
 _(nada ainda)_
 
 ## Já lançado
+
+### 1.0.7
+Correções na edição de texto (27/11/2026):
+- **Textos se sobrepondo ao editar**: em linhas muito juntas, a edição pegava pedaços da linha de cima/de baixo e embaralhava. Agora só a linha clicada é alterada.
+- **Colunas na mesma altura** (tabelas, "Nome: …   Data: …") viravam uma linha só e eram reescritas encavaladas; agora cada pedaço é editado separado.
+- **Arrastar o texto**: arrastar uma linha leva o texto para outro lugar (o lugar antigo fica limpo). Durante a edição, a alça ✥ ao lado do quadro também arrasta.
+- Tela mais limpa: sem contorno tracejado em todas as linhas (só destaca a linha embaixo do mouse) e dica "Enter aplica • Esc cancela" ao lado do quadro.
+- O quadro de edição às vezes abria e sumia sozinho logo depois de uma edição (a página era montada duas vezes); corrigido, e páginas escaneadas não fazem mais OCR em dobro depois de cada edição.
+- **Barra de ferramentas**: "Assinar" e "Organizar" encavalavam nos ícones vizinhos e a ponta direita (zoom, busca) ficava cortada em janelas menores. Agora nada encolhe por cima do vizinho, os textos somem e fica só o ícone em telas menores, e se ainda faltar espaço a rodinha do mouse rola a barra para o lado.
 
 ### 1.0.6
 Pedidos internos (27/11/2026):

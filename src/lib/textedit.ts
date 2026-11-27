@@ -20,20 +20,23 @@ export function linesOf(t: Tab, page: number): Promise<TextLine[]> {
   return p;
 }
 
-export async function applyTextEdit(t: Tab, page: number, line: TextLine, text: string, pageLines: TextLine[]) {
-  track("editar_texto", { escaneado: !!line.scanned });
+/** `move`: deslocamento [dx, dy] em pontos do PDF (arrastar o texto para outro lugar). */
+export async function applyTextEdit(t: Tab, page: number, line: TextLine, text: string, pageLines: TextLine[], move?: [number, number]) {
+  track(text === line.text && move ? "mover_texto" : "editar_texto", { escaneado: !!line.scanned });
   const st = useStore.getState();
-  st.set({ busy: "Aplicando a edição…" });
+  st.set({ busy: move && text === line.text ? "Movendo o texto…" : "Aplicando a edição…" });
   try {
     // formulários preenchidos entram no PDF antes; anotações continuam como objetos
     const base = t.formDirty ? await buildPdf({ ...t, objects: [] }) : t.bytes;
+    const mv = move && (Math.abs(move[0]) > 0.5 || Math.abs(move[1]) > 0.5) ? { move } : {};
     const edit = line.scanned
       ? {
           page, rect: line.bbox, text, scanned: true, original: line.text,
           // outras linhas da página: ajudam o motor a reconhecer a fonte do documento
           context: pageLines.filter((l) => l !== line && l.text.length >= 6).slice(0, 10).map((l) => ({ rect: l.bbox, text: l.text })),
+          ...mv,
         }
-      : { page, rect: line.bbox, text };
+      : { page, rect: line.bbox, text, ...mv };
     const out = await editTextNative(base, [edit]);
     useStore.getState().replaceBytes(t.id, out, { record: true, keepObjects: true });
   } catch (e) {

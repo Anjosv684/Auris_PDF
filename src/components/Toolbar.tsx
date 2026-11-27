@@ -92,7 +92,11 @@ export function Toolbar() {
   };
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" onWheel={(e) => {
+      // rodinha do mouse rola a barra para o lado quando ela não cabe na janela
+      const el = e.currentTarget;
+      if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
+    }}>
       <button className="ib" title="Abrir (Ctrl+O)" onClick={openFiles}><FolderOpen size={17} /></button>
       <button className="ib" title="Salvar (Ctrl+S)" onClick={() => saveTab()} disabled={!tab}><Save size={17} /></button>
       <button className="ib" title="Salvar como… (Ctrl+Shift+S)" onClick={() => saveTab(true)} disabled={!tab}><FilePenLine size={17} /></button>
@@ -120,12 +124,12 @@ export function Toolbar() {
         <button className="ib" title="Assinatura manuscrita / rubrica" onClick={() => s.openDialog({ kind: "signature-pad" })}><FeatureIcon n="assinatura-manuscrita" /></button>
         <div className="sep" />
         <button className="ib label" title="Assinar com certificado digital ICP-Brasil (A1/A3)" onClick={() => { addSigField(); s.openDialog({ kind: "sign" }); }}>
-          <FeatureIcon n="assinatura-digital" /> Assinar
+          <FeatureIcon n="assinatura-digital" /> <span className="ib-txt">Assinar</span>
         </button>
         <button className={`ib ${s.sigPanel ? "on" : ""}`} title="Verificar assinaturas digitais" onClick={() => s.set({ sigPanel: !s.sigPanel })}><FeatureIcon n="verificar" /></button>
       </>}
       <div className="sep" />
-      <button className={`ib label ${s.view === "organize" ? "on" : ""}`} title="Organizar páginas" onClick={organize}><FeatureIcon n="organizar" /> Organizar</button>
+      <button className={`ib label ${s.view === "organize" ? "on" : ""}`} title="Organizar páginas" onClick={organize}><FeatureIcon n="organizar" /> <span className="ib-txt">Organizar</span></button>
       <button className="ib" title="Juntar PDFs" onClick={() => s.openDialog({ kind: "merge" })}><FeatureIcon n="juntar" /></button>
       <button className="ib" title="Dividir PDF" onClick={() => s.openDialog({ kind: "split" })}><FeatureIcon n="dividir" /></button>
       <button className="ib" title="Comprimir PDF" onClick={() => s.openDialog({ kind: "compress" })}><FeatureIcon n="comprimir" /></button>
