@@ -1,0 +1,22 @@
+# Ideias e melhorias do Auris PDF
+
+Lista de pedidos para juntar várias melhorias numa atualização só.
+Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
+
+## Para a próxima versão (1.0.2)
+
+- [x] **Tela de abertura**: no lugar da tela preta com um quadrado branco, abrir com a logo Auris e uma barrinha de carregamento.
+
+## Ideias para depois
+
+_(nada ainda)_
+
+## Já lançado
+
+### 1.0.1
+- Motor de compressão próprio (PyMuPDF) no lugar do motor JavaScript.
+- Logo Auris no ícone do .exe, no instalador, na barra do topo e na tela inicial.
+- Dica ao passar o mouse em todos os ícones.
+
+### 1.0.0
+- Atualização automática: aviso quando há versão nova, botão "Verificar atualizações" e tela de progresso ao atualizar.

@@ -8,3 +8,10 @@ window.addEventListener("contextmenu", (e) => {
 });
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// some com a tela de abertura depois do primeiro desenho do app
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  const s = document.getElementById("splash");
+  if (!s) return;
+  setTimeout(() => { s.classList.add("hide"); setTimeout(() => s.remove(), 400); }, 250);
+}));

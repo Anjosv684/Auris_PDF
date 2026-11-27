@@ -323,6 +323,12 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // a janela nasce invisível e só aparece com a tela de abertura já desenhada (sem flash preto/branco)
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Finished {
+                let _ = webview.window().show();
+            }
+        })
         .manage(Pending(Mutex::new(initial)))
         .invoke_handler(tauri::generate_handler![
             take_launch,
