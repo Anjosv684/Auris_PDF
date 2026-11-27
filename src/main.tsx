@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import "./lib/theme"; // aplica o tema salvo e acompanha o modo do Windows
 import App from "./App";
 
 // bloqueia o menu de contexto padrão do navegador e o zoom do webview (o app tem o seu)

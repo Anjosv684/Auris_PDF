@@ -6,6 +6,15 @@
     <title>Auris PDF</title>
     <link rel="icon" type="image/png" href="/brand/mark.png" />
     <!-- tela de abertura: aparece no primeiro quadro, antes do app carregar -->
+    <script>
+      // aplica o tema salvo antes do primeiro desenho (a tela de abertura já sai na cor certa)
+      (function () {
+        var t = "azul";
+        try { t = localStorage.getItem("auris.theme") || "azul"; } catch (e) {}
+        if (t === "sistema") t = matchMedia("(prefers-color-scheme: light)").matches ? "claro" : "azul";
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
     <style>
       html, body { margin: 0; height: 100%; background: #031d38; }
       #splash {
@@ -18,6 +27,13 @@
       #splash .bar { width: 160px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
       #splash .bar::after { content: ""; display: block; width: 40%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #2f80ed, #5aa2f5); animation: splash-bar 1.1s ease-in-out infinite; }
       @keyframes splash-pulse { 50% { transform: scale(1.06); filter: drop-shadow(0 0 18px rgba(90,162,245,.45)); } }
+
+      html[data-theme="claro"], html[data-theme="claro"] body { background: #eef2f7; }
+      html[data-theme="escuro"], html[data-theme="escuro"] body { background: #141518; }
+      html[data-theme="claro"] #splash { background: radial-gradient(ellipse at center, #ffffff 0%, #e4ecf6 70%); }
+      html[data-theme="claro"] #splash .bar { background: rgba(15,40,70,.1); }
+      html[data-theme="claro"] #splash .logo { filter: brightness(.62) saturate(1.4); }
+      html[data-theme="escuro"] #splash { background: radial-gradient(ellipse at center, #2b3038 0%, #141518 70%); }
       @keyframes splash-bar { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
     </style>
   </head>

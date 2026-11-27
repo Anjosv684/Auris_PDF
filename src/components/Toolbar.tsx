@@ -39,7 +39,7 @@ export function Menu({ icon, label, title, children, right }: { icon: React.Reac
   }, [open]);
   const toggle = () => {
     const r = ref.current!.getBoundingClientRect();
-    setPos(right ? { top: r.bottom + 6, right: Math.max(6, window.innerWidth - r.right) } : { top: r.bottom + 6, left: Math.max(6, Math.min(r.left, window.innerWidth - 246)) });
+    setPos(right ? { top: r.bottom + 6, left: "auto", right: Math.max(6, window.innerWidth - r.right) } : { top: r.bottom + 6, left: Math.max(6, Math.min(r.left, window.innerWidth - 246)) });
     setOpen(!open);
   };
   return (

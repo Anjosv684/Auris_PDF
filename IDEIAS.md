@@ -3,7 +3,7 @@
 Lista de pedidos para juntar várias melhorias numa atualização só.
 Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
-## Para a próxima versão (1.0.5)
+## Para a próxima versão (1.0.6)
 
 _(nada ainda)_
 
@@ -12,6 +12,13 @@ _(nada ainda)_
 _(nada ainda)_
 
 ## Já lançado
+
+### 1.0.5
+Pedidos internos (27/11/2026):
+- **Temas da interface** (Configurações → Tema): **Azul** (o atual), **Claro** (fundo branco), **Escuro** (grafite) e **Automático** (segue o modo claro/escuro do Windows). A escolha fica salva e a tela de abertura já sai na cor do tema. A página do PDF continua branca em todos.
+
+Correções (27/11/2026):
+- Menu da engrenagem (Configurações) abria esticado ocupando a largura da tela; agora é uma caixinha pequena no canto.
 
 ### 1.0.4
 Pedidos de clientes (suporte Aliança Tur, 27/11/2026):

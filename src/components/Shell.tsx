@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import {
-  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw, RotateCw,
+  X, Plus, Settings, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, Info, MonitorCheck, ExternalLink, ShieldCheck, RefreshCw, RotateCw, Palette,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
 import { closeTabSafe, openFiles } from "../lib/actions";
@@ -13,11 +13,13 @@ import { checkForUpdate, useUpdate } from "../lib/updater";
 import { Menu } from "./Toolbar";
 import { FeatureIcon } from "./icons";
 import { setPageBar } from "./PageBar";
+import { THEMES, setTheme, useTheme } from "../lib/theme";
 import type { Tab } from "../lib/types";
 
 export function TopBar() {
   const hasUpdate = useUpdate((s) => s.status === "available");
   const pageBar = useStore((s) => s.pageBar);
+  const theme = useTheme((s) => s.theme);
   const tabs = useStore((s) => s.tabs);
   const activeId = useStore((s) => s.activeId);
   const setActive = useStore((s) => s.setActive);
@@ -46,6 +48,16 @@ export function TopBar() {
             <button onClick={() => { setPageBar(!pageBar); close(); }}>
               <RotateCw size={16} /> Barra de giro do documento <span className="k">{pageBar ? "Ligada" : "Desligada"}</span>
             </button>
+            <hr />
+            <div className="menu-label"><Palette size={16} /> Tema</div>
+            <div className="theme-seg">
+              {THEMES.map((t) => (
+                <button key={t.id} className={theme === t.id ? "on" : ""} onClick={() => setTheme(t.id)}
+                  title={t.id === "sistema" ? "Segue o modo claro/escuro do Windows" : `Tema ${t.label.toLowerCase()}`}>
+                  <span className={`theme-dot ${t.id}`} />{t.label}
+                </button>
+              ))}
+            </div>
             <hr />
             <button onClick={() => { checkForUpdate(true); close(); }}><RefreshCw size={16} /> Verificar atualizações</button>
             <button onClick={() => { useStore.getState().openDialog({ kind: "about" }); close(); }}><Info size={16} /> Sobre o Auris PDF</button>
