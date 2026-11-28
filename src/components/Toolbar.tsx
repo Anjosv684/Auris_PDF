@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  Files, FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
+  FolderOpen, Save, FilePenLine, TextCursorInput, Undo2, Redo2, MousePointer2, Hand, Highlighter, Type, PenLine, Square, Circle, Minus, MoveUpRight, ImagePlus, FileSignature, MoreHorizontal, ZoomIn, ZoomOut, Search, PanelLeft, Trash2, Copy, Eraser, Bold, FileDown, Maximize,
 } from "lucide-react";
 import { useStore, useActiveTab } from "../lib/store";
 import { isApp } from "../lib/platform";
@@ -11,7 +11,7 @@ import { exportWord } from "../lib/word";
 import type { Obj, Tool } from "../lib/types";
 import { viewerApi } from "../lib/viewerApi";
 import {
-  openFiles, saveTab, printTab, pickAndAddImage, addStamp, STAMPS, addSigField, highlightSelection, flatten,
+  openFiles, saveTab, printTab, pickAndAddImage, addStamp, STAMPS, highlightSelection, flatten,
 } from "../lib/actions";
 import { removeWhite, uid } from "../lib/util";
 import { runTask } from "../lib/store";
@@ -124,12 +124,7 @@ export function Toolbar() {
         </Menu>
         <button className="ib" title="Assinatura manuscrita / rubrica" onClick={() => s.openDialog({ kind: "signature-pad" })}><FeatureIcon n="assinatura-manuscrita" /></button>
         <div className="sep" />
-        <Menu icon={<FeatureIcon n="assinatura-digital" />} label={<> <span className="ib-txt">Assinar</span></>} title="Assinar (certificado digital, carimbo ou à mão)">
-          {(close) => <>
-            <button onClick={() => { close(); addSigField(); s.openDialog({ kind: "sign" }); }}><FeatureIcon n="assinatura-digital" size={16} /> Assinar este PDF com certificado</button>
-            <button onClick={() => { close(); openBatch(); }}><Files size={16} /> Assinar vários PDFs de uma vez…</button>
-          </>}
-        </Menu>
+        <button className="ib" title="Assinar (certificado digital, carimbo ou à mão) — um ou vários PDFs" onClick={() => openBatch()}><FeatureIcon n="assinatura-digital" /> <span className="ib-txt">Assinar</span></button>
         <button className={`ib ${s.sigPanel ? "on" : ""}`} title="Verificar assinaturas digitais" onClick={() => s.set({ sigPanel: !s.sigPanel })}><FeatureIcon n="verificar" /></button>
       </>}
       <div className="sep" />
@@ -281,7 +276,7 @@ export function PropBar() {
         </button>
       </>}
       {sel?.type === "sigfield" && (
-        <button className="btn" style={{ height: 30 }} onClick={() => useStore.getState().openDialog({ kind: "sign" })}><FileSignature size={15} /> Assinar agora</button>
+        <button className="btn" style={{ height: 30 }} onClick={() => openBatch()}><FileSignature size={15} /> Assinar agora</button>
       )}
       {sel && sel.type !== "sigfield" && <>
         <div className="sep" />

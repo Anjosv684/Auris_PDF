@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Usb, FileKey, Upload, KeyRound } from "lucide-react";
 import { isApp, listCertificates, pickFiles, type PickedFile } from "../lib/platform";
-import { signerFromPfx, signerFromStore, describeCert, certFromDer, type Signer } from "../lib/sign";
+import { signerFromPfx, signerFromStore, describeCert, certFromDer, type Signer, type CertSummary } from "../lib/sign";
 import type { CertInfo } from "../lib/types";
 
 /** Escolha do certificado: token A3 / instalado no Windows, ou arquivo A1 (.pfx). */
 export function useCertPicker(onEnter?: () => void) {
-  const [src, setSrc] = useState<"store" | "pfx">(isApp ? "store" : "pfx");
+  const [src, setSrc] = useState<"store" | "pfx">(() => (isApp && localStorage.getItem("auris.cert.src") !== "pfx" ? "store" : "pfx"));
   const [certs, setCerts] = useState<CertInfo[] | null>(null);
   const [certErr, setCertErr] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
@@ -18,12 +18,28 @@ export function useCertPicker(onEnter?: () => void) {
     setCertErr("");
     listCertificates().then((c) => {
       setCerts(c);
+      const lastTp = localStorage.getItem("auris.cert.last");
       if (c.length === 1) setPicked(c[0].thumbprint);
+      else if (lastTp && c.some((x) => x.thumbprint === lastTp)) setPicked(lastTp);
     }).catch((e) => setCertErr(String(e?.message || e)));
   };
   useEffect(() => { if (src === "store" && isApp && !certs) loadCerts(); }, [src]);
+  // lembra o último certificado usado
+  useEffect(() => { try { localStorage.setItem("auris.cert.src", src); if (picked) localStorage.setItem("auris.cert.last", picked); } catch { /* */ } }, [src, picked]);
 
   const ready = src === "store" ? !!picked : !!pfx;
+  /** dados do certificado escolhido (para a prévia do quadro); null se ainda não dá para ler */
+  const summary = useMemo<CertSummary | null>(() => {
+    try {
+      if (src === "store") {
+        const c = certs?.find((x) => x.thumbprint === picked);
+        return c ? describeCert(certFromDer(c.der)) : null;
+      }
+      return pfx && pwd ? signerFromPfx(pfx.bytes, pwd).summary : null;
+    } catch {
+      return null;
+    }
+  }, [src, certs, picked, pfx, pwd]);
   const isStore = src === "store";
 
   /** Cria o assinador (lança erro com mensagem amigável). */
@@ -88,5 +104,5 @@ export function useCertPicker(onEnter?: () => void) {
     )}
   </>;
 
-  return { ui, signer, ready, isStore };
+  return { ui, signer, ready, isStore, summary };
 }

@@ -3,7 +3,7 @@
 Lista de pedidos para juntar várias melhorias numa atualização só.
 Quando uma ideia entra numa versão publicada, ela passa para "Já lançado".
 
-## Para a próxima versão (1.0.9)
+## Para a próxima versão (1.0.10)
 
 _(nada ainda)_
 
@@ -12,6 +12,14 @@ _(nada ainda)_
 _(nada ainda)_
 
 ## Já lançado
+
+### 1.0.9
+Modelos de assinatura e compressão em lote pelo Explorer (28/11/2026):
+- **Quadro da assinatura:** sem "Motivo" e sem "validar.iti.gov.br"; mostra o CPF (completo, parcial ou sem), lido também de dentro do certificado ICP-Brasil (SAN 2.16.76.1.3.1). Motivo é opcional e fica só nos dados da assinatura.
+- **10 modelos de quadro** com fundo transparente (Estilo Adobe, Clássico azul, Moderno com selo, Linha de assinatura, Faixa azul, Compacto, Carimbo, Verde ICP-Brasil, Formal, Elegante dourado); o escolhido fica como padrão. Evento `assinar_lote` ganhou `modelo`.
+- **Tela de posição maior:** arrastar, redimensionar pelos 4 cantos, trocar de PDF e de página na prévia, posições rápidas; a prévia mostra o quadro real. "Assinar" (um ou vários PDFs) usa sempre essa tela.
+- **Últimas escolhas salvas sozinhas:** modo, modelo, rubrica/carimbo, posição/tamanho, página, CPF, local, certificado; a assinatura à mão vai para "Minhas assinaturas" ao assinar.
+- **Comprimir vários PDFs pelo botão direito do Explorer:** todos entram na mesma lista (antes só o primeiro); itens do menu aparecem também com mais de 15 arquivos selecionados.
 
 ### 1.0.8
 Assinatura em lote e janela integrada (27/11/2026):

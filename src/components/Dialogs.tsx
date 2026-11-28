@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Plus, ArrowUp, ArrowDown, Trash2, Upload, Eraser, KeyRound, Check, Files } from "lucide-react";
+import { X, Plus, ArrowUp, ArrowDown, Trash2, Upload, Eraser, Check } from "lucide-react";
 import { useStore, runTask, getActiveTab, type Dialog } from "../lib/store";
 import { mergePdfs, extractPages, imagesToPdf, pdfToImages } from "../lib/pages";
 import { compressPdf, LEVELS, type Level } from "../lib/compress";
 import { buildPdf } from "../lib/export";
 import { pickFiles, saveAs, saveMany, isApp, writePath, compressNative, type PickedFile } from "../lib/platform";
 import { fmtSize, baseName, parseRanges, uid, removeWhite, loadImage } from "../lib/util";
-import { addImageAt, flatten, openBytes, addSigField } from "../lib/actions";
-import { signPdf } from "../lib/sign";
-import { useCertPicker } from "./CertPicker";
-import { SignBatchDialog, openBatch } from "./SignBatch";
-import { getDoc } from "../lib/docs";
+import { addImageAt, openBytes } from "../lib/actions";
+import { SignBatchDialog } from "./SignBatch";
 import { openPdf } from "../lib/pdfjs";
 import { appVersion, checkForUpdate } from "../lib/updater";
 import { PrintDialog } from "./PrintDialog";
@@ -47,7 +44,6 @@ export function Dialogs() {
     case "compress": return <CompressDialog d={d} />;
     case "images": return <ImagesDialog d={d} />;
     case "export-images": return <ExportImagesDialog />;
-    case "sign": return <SignDialog />;
     case "sign-batch": return <SignBatchDialog d={d} />;
     case "signature-pad": return <SignaturePadDialog />;
     case "password": return <PasswordDialog d={d} />;
@@ -214,11 +210,16 @@ function CompressDialog({ d }: { d: Extract<Dialog, { kind: "compress" }> }) {
   const [running, setRunning] = useState(false);
   useEffect(() => {
     (async () => {
-      if (d.files?.length) return setList(d.files.map((f) => ({ ...f, id: uid() })));
+      if (d.files?.length) return;
       const t = getActiveTab();
       if (t) setList([{ id: uid(), name: t.name, path: t.path, bytes: await tabBytes(t) }]);
     })();
   }, []);
+  // arquivos que chegam pelo Explorer (botão direito) entram na lista, mesmo com a janela já aberta
+  useEffect(() => {
+    if (!d.files?.length) return;
+    setList((l) => [...l, ...d.files!.filter((f) => !l.some((x) => (x.path ? x.path === f.path : x.bytes === f.bytes))).map((f) => ({ ...f, id: uid() }))]);
+  }, [d.files]);
   const run = async () => {
     setRunning(true);
     for (const it of list) {
@@ -364,82 +365,6 @@ function ExportImagesDialog() {
       </div>
       <div className="field"><label>Páginas (vazio = todas)</label><input type="text" value={pages} onChange={(e) => setPages(e.target.value)} placeholder="ex.: 1-3, 5" /></div>
       {prog !== null && <div className="progress"><div style={{ width: `${prog * 100}%` }} /></div>}
-    </Modal>
-  );
-}
-
-// ---------------- assinatura digital ----------------
-const REASONS = ["Concordo com o conteúdo do documento", "Aprovação", "Ciência", "Testemunha", "Sou o autor do documento", "Revisão"];
-
-function SignDialog() {
-  const [visible, setVisible] = useState(true);
-  const [showDoc, setShowDoc] = useState(true);
-  const [reason, setReason] = useState(REASONS[0]);
-  const [location, setLocation] = useState(() => localStorage.getItem("auris.loc") || "");
-  const cert = useCertPicker(() => sign());
-  const tab = getActiveTab();
-
-  if (!tab) return <Modal title="Assinar digitalmente" icon="assinatura-digital"><div className="muted">Abra o PDF que deseja assinar.</div></Modal>;
-  const field = tab.objects.find((o) => o.type === "sigfield");
-
-  const sign = async () => {
-    const st = useStore.getState();
-    localStorage.setItem("auris.loc", location);
-    await runTask("Assinando…", async () => {
-      const signer = cert.signer();
-      const f = useStore.getState().tabs.find((t) => t.id === tab.id)!.objects.find((o) => o.type === "sigfield");
-      const base = await flatten();
-      if (!base) return;
-      const cur = getActiveTab()!;
-      const pdf = await getDoc(cur);
-      const pageNo = f ? f.page : pdf.numPages - 1;
-      const vp = (await pdf.getPage(pageNo + 1)).getViewport({ scale: 1 });
-      st.set({ busy: cert.isStore ? "Assinando… (informe o PIN do token se solicitado)" : "Assinando…" });
-      const signed = await signPdf(base, signer, {
-        page: pageNo,
-        rect: visible && f ? { x: f.x, y: f.y, w: f.w, h: f.h } : null,
-        viewport: vp,
-        reason,
-        location,
-        showDoc,
-      });
-      st.replaceBytes(cur.id, signed, { record: true });
-      close();
-      const p = await saveAs(signed, `${baseName(cur.name)} (assinado).pdf`);
-      if (p) {
-        st.patchTab(cur.id, { dirty: false, ...(isApp ? { path: p, name: p.split(/[\\/]/).pop()! } : {}) });
-        st.toast(`Documento assinado por ${signer.summary.name}`);
-      } else st.toast("Assinado. Lembre-se de salvar (Ctrl+S).", "info");
-      st.set({ sigPanel: true });
-    });
-  };
-
-  return (
-    <Modal title="Assinar com certificado digital" icon="assinatura-digital" wide foot={<>
-      <button className="btn ghost" style={{ marginRight: "auto" }} onClick={() => openBatch()}><Files size={15} /> Assinar vários PDFs de uma vez</button>
-      <span className="muted">{field ? `Página ${field.page + 1}` : "Sem posição"}</span>
-      <button className="btn" onClick={sign} disabled={!cert.ready}><KeyRound size={16} /> Assinar</button>
-    </>}>
-      {cert.ui}
-      <div className="row">
-        <div className="field">
-          <label>Motivo</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)}>{REASONS.map((r) => <option key={r}>{r}</option>)}</select>
-        </div>
-        <div className="field">
-          <label>Local (opcional)</label>
-          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="ex.: Aracaju/SE" />
-        </div>
-      </div>
-      <div className="row" style={{ flex: "none", gap: 18 }}>
-        <label className="check" style={{ flex: "none" }}><input type="checkbox" checked={visible} onChange={(e) => { setVisible(e.target.checked); if (e.target.checked && !field) addSigField(); }} /> Carimbo visível na página</label>
-        <label className="check" style={{ flex: "none" }}><input type="checkbox" checked={showDoc} onChange={(e) => setShowDoc(e.target.checked)} /> Mostrar CPF/CNPJ (parcial)</label>
-      </div>
-      <div className="muted">
-        {visible ? "Feche esta janela para arrastar/redimensionar o quadro tracejado da assinatura; depois clique em “Assinar” de novo. " : ""}
-        As edições pendentes são gravadas no PDF antes de assinar. Assinaturas já existentes continuam válidas (a nova é acrescentada ao final do arquivo).
-        Após assinar, qualquer alteração no documento invalida a assinatura.
-      </div>
     </Modal>
   );
 }

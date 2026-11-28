@@ -6,6 +6,7 @@ import { loadForEdit } from "./pdfcore";
 import { hasSignatures, incrementalSave, snapshot } from "./incremental";
 import { finishSignature, prepareSignature, type PreparedSig, type Signer } from "./sign";
 import { track } from "./telemetry";
+import type { DocMode } from "./sigtemplates";
 
 export type PageRule = "primeira" | "ultima" | "todas" | number;
 
@@ -15,7 +16,7 @@ export type Place = { page: PageRule; rx: number; ry: number; w: number; h: numb
 export type BatchFile = { name: string; path?: string; bytes: Uint8Array };
 
 export type BatchMode =
-  | { kind: "cert"; signer: Signer; reason: string; location: string; showDoc: boolean; visible: boolean; image?: Uint8Array }
+  | { kind: "cert"; signer: Signer; reason: string; location: string; doc: DocMode; template: string; visible: boolean; image?: Uint8Array }
   | { kind: "image"; png: Uint8Array };
 
 export function pagesFor(rule: PageRule, n: number): number[] {
@@ -103,7 +104,8 @@ export async function signBatch(files: BatchFile[], mode: BatchMode, place: Plac
         viewport: vp,
         reason: mode.reason,
         location: mode.location,
-        showDoc: mode.showDoc,
+        doc: mode.doc,
+        template: mode.template,
         image: mode.image,
       });
     } catch (e) {
@@ -128,6 +130,6 @@ export async function signBatch(files: BatchFile[], mode: BatchMode, place: Plac
       progress(i, "ok");
     } catch (e) { fail(i, e); }
   });
-  track("assinar_lote", { tipo: "certificado", arquivos: idx.length });
+  track("assinar_lote", { tipo: "certificado", arquivos: idx.length, modelo: mode.template });
   return res;
 }

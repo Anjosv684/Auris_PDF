@@ -8,7 +8,6 @@ export type Dialog =
   | { kind: "compress"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "images"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "export-images" }
-  | { kind: "sign" }
   | { kind: "sign-batch"; files?: { name: string; path?: string; bytes: Uint8Array }[] }
   | { kind: "signature-pad" }
   | { kind: "password"; retry: boolean; resolve: (p: string | null) => void }

@@ -2,9 +2,10 @@
 // A1: arquivo .pfx (assinado aqui mesmo). A3/instalado: repositório do Windows via app.
 import forge from "node-forge";
 import {
-  PDFDocument, PDFName, PDFHexString, PDFString, PDFNumber, PDFDict, PDFArray, PDFRef, StandardFonts,
+  PDFDocument, PDFName, PDFHexString, PDFString, PDFNumber, PDFDict, PDFArray, PDFRef,
   pushGraphicsState, popGraphicsState, setFillingRgbColor, setStrokingRgbColor, rectangle, fill, stroke,
   setLineWidth, beginText, endText, setFontAndSize, moveText, showText, concatTransformationMatrix, drawObject,
+  moveTo, lineTo, closePath, setLineCap, setLineJoin, LineCapStyle, LineJoinStyle,
   type PDFFont, type PDFImage,
 } from "pdf-lib";
 import { binaryToBytes, bytesToBinary, bytesToB64 } from "./util";
@@ -13,6 +14,7 @@ import { loadForEdit, sanitize } from "./pdfcore";
 import { signWithStore, signManyWithStore } from "./platform";
 import type { CertInfo } from "./types";
 import { track } from "./telemetry";
+import { FONT_NAMES, loadMeasure, templateById, type DocMode, type FontKey } from "./sigtemplates";
 
 const asn1 = forge.asn1;
 const C = asn1.Class, T = asn1.Type;
@@ -67,17 +69,48 @@ export type CertSummary = {
 
 export function describeCert(cert: forge.pki.Certificate, chain: forge.pki.Certificate[] = []): CertSummary {
   const cn = (cert.subject.getField("CN")?.value as string) || "";
-  const [name, doc] = cn.includes(":") ? cn.split(":") : [cn, undefined];
+  const [name, cnDoc] = cn.includes(":") ? cn.split(":") : [cn, undefined];
+  const doc = /^\d{11}$|^\d{14}$/.test(cnDoc?.trim() ?? "") ? cnDoc!.trim() : docFromSan(cert) ?? cnDoc?.trim();
   const all = [cert, ...chain];
   const icp = all.some((c) => /ICP-Brasil/i.test(JSON.stringify(c.issuer.attributes.map((x) => x.value))));
   return {
     name: fixLatin(name.trim()),
-    doc: doc?.trim(),
+    doc,
     issuer: fixLatin((cert.issuer.getField("CN")?.value as string) || ""),
     validFrom: cert.validity.notBefore,
     validTo: cert.validity.notAfter,
     icp,
   };
+}
+
+/**
+ * CPF/CNPJ gravado no certificado ICP-Brasil (Subject Alternative Name, "otherName"):
+ * 2.16.76.1.3.1 = dados da pessoa física (nascimento + CPF + ...), 2.16.76.1.3.3 = CNPJ.
+ */
+function docFromSan(cert: forge.pki.Certificate): string | undefined {
+  try {
+    const ext = (cert.extensions as { id: string; value: string }[]).find((e) => e.id === "2.5.29.17");
+    if (!ext) return;
+    let cpf: string | undefined, cnpj: string | undefined;
+    for (const gn of asn1.fromDer(ext.value).value as Asn[]) {
+      if (gn.tagClass !== C.CONTEXT_SPECIFIC || gn.type !== 0 || !Array.isArray(gn.value)) continue;
+      const [o, v] = gn.value as Asn[];
+      let leaf: Asn | undefined = v;
+      while (leaf && Array.isArray(leaf.value)) leaf = (leaf.value as Asn[])[0];
+      const raw = typeof leaf?.value === "string" ? leaf.value : "";
+      const id = asn1.derToOid(o.value as string);
+      if (id === "2.16.76.1.3.1" && !cpf) {
+        const c = raw.slice(8, 19);
+        if (/^\d{11}$/.test(c) && !/^0+$/.test(c)) cpf = c;
+      } else if (id === "2.16.76.1.3.3") {
+        const c = raw.replace(/\D/g, "").slice(0, 14);
+        if (c.length === 14 && !/^0+$/.test(c)) cnpj = c;
+      }
+    }
+    return cpf ?? cnpj;
+  } catch {
+    return undefined;
+  }
 }
 
 // o forge devolve UTF8String como bytes; converte para texto
@@ -183,77 +216,52 @@ export type SignOptions = {
   page: number; // índice 0
   rect: { x: number; y: number; w: number; h: number } | null; // espaço de visualização; null = invisível
   viewport: { rotation: number; convertToPdfPoint: (x: number, y: number) => number[] } | null;
+  /** fica só nos dados da assinatura (não aparece no quadro) */
   reason: string;
   location: string;
-  showDoc: boolean;
-  /** imagem (PNG) mostrada à esquerda do carimbo: rubrica ou carimbo pessoal */
+  /** CPF/CNPJ no quadro: completo, parcial ou sem */
+  doc: DocMode;
+  /** modelo do quadro (sigtemplates) */
+  template?: string;
+  /** imagem (PNG) mostrada no quadro: rubrica ou carimbo pessoal */
   image?: Uint8Array;
 };
 
-function maskDoc(d?: string) {
-  if (!d) return "";
-  if (d.length === 11) return `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`;
-  if (d.length === 14) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
-  return d;
-}
-
-function nowBR() {
-  const d = new Date();
-  const off = -d.getTimezoneOffset();
-  const tz = `${off >= 0 ? "+" : "-"}${String(Math.floor(Math.abs(off) / 60)).padStart(2, "0")}:${String(Math.abs(off) % 60).padStart(2, "0")}`;
-  return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR")} ${tz}`;
-}
-
-function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: CertSummary, o: SignOptions, f1: PDFFont, f2: PDFFont, img?: PDFImage) {
+async function appearance(doc: PDFDocument, w: number, h: number, rot: number, s: CertSummary, o: SignOptions, img?: PDFImage) {
+  const tpl = templateById(o.template);
+  const measure = await loadMeasure();
+  const prims = tpl.draw(w, h, {
+    name: s.name || "Titular", doc: s.doc, docMode: o.doc, date: new Date(), location: o.location || undefined, icp: s.icp,
+    img: img ? img.width / img.height : undefined,
+  }, measure);
+  const fonts = new Map<FontKey, PDFFont>();
+  for (const p of prims) if (p.k === "text" && !fonts.has(p.f)) fonts.set(p.f, await doc.embedFont(FONT_NAMES[p.f]));
   const ops = [];
-  const blue = [0.094, 0.373, 0.647] as const;
-  ops.push(
-    pushGraphicsState(), setFillingRgbColor(0.95, 0.97, 1), rectangle(0, 0, w, h), fill(), popGraphicsState(),
-    pushGraphicsState(), setStrokingRgbColor(...blue), setLineWidth(0.8), rectangle(0.4, 0.4, w - 0.8, h - 0.8), stroke(), popGraphicsState(),
-    pushGraphicsState(), setFillingRgbColor(...blue), rectangle(0, 0, Math.max(3, w * 0.015), h), fill(), popGraphicsState(),
-  );
-  let pad = Math.max(6, w * 0.035);
-  // imagem à esquerda, texto à direita
-  if (img) {
-    const ip = Math.max(3, h * 0.08);
-    const maxIw = w * 0.42 - ip, maxIh = h - ip * 2;
-    const k = Math.min(maxIw / img.width, maxIh / img.height);
-    const iw = img.width * k, ih = img.height * k;
-    ops.push(pushGraphicsState(), concatTransformationMatrix(iw, 0, 0, ih, ip + Math.max(3, w * 0.015), (h - ih) / 2), drawObject("Im1"), popGraphicsState());
-    pad = ip + Math.max(3, w * 0.015) + iw + ip;
-  }
-  const left = pad;
-  if (img) pad = Math.max(6, w * 0.035);
-  const maxW = w - left - pad;
-  const lines: { t: string; f: PDFFont; k: number; c: readonly [number, number, number] }[] = [
-    { t: "Assinado digitalmente por", f: f1, k: 0.8, c: [0.35, 0.4, 0.5] },
-    { t: s.name || "Titular", f: f2, k: 1.15, c: [0.05, 0.1, 0.2] },
-  ];
-  if (o.showDoc && s.doc) lines.push({ t: (s.doc.length === 14 ? "CNPJ: " : "CPF: ") + maskDoc(s.doc), f: f1, k: 0.9, c: [0.15, 0.2, 0.3] });
-  lines.push({ t: "Data: " + nowBR(), f: f1, k: 0.9, c: [0.15, 0.2, 0.3] });
-  if (o.reason) lines.push({ t: "Motivo: " + o.reason, f: f1, k: 0.9, c: [0.15, 0.2, 0.3] });
-  lines.push({ t: s.icp ? "Certificado ICP-Brasil • validar.iti.gov.br" : "Verifique em validar.iti.gov.br", f: f1, k: 0.75, c: blue });
-
-  const totalK = lines.reduce((a, l) => a + l.k * 1.3, 0);
-  let base = Math.min((h - pad * 1.2) / totalK, 11);
-  let y = h - pad * 0.7;
-  for (const l of lines) {
-    const t = sanitize(l.f, l.t);
-    let size = base * l.k;
-    const tw = l.f.widthOfTextAtSize(t, size);
-    if (tw > maxW) size *= maxW / tw;
-    y -= base * l.k * 1.3;
-    ops.push(
-      beginText(), setFillingRgbColor(...l.c), setFontAndSize(l.f === f2 ? "F2" : "F1", size),
-      moveText(left + 2, y + base * l.k * 0.3), showText(l.f.encodeText(t)), endText(),
-    );
+  for (const p of prims) {
+    if (p.k === "rect") {
+      ops.push(pushGraphicsState());
+      if (p.fill) ops.push(setFillingRgbColor(...p.fill), rectangle(p.x, p.y, p.w, p.h), fill());
+      if (p.stroke) ops.push(setStrokingRgbColor(...p.stroke), setLineWidth(p.lw ?? 1), rectangle(p.x, p.y, p.w, p.h), stroke());
+      ops.push(popGraphicsState());
+    } else if (p.k === "path") {
+      const path = () => [moveTo(...p.pts[0]), ...p.pts.slice(1).map((q) => lineTo(...q)), ...(p.close ? [closePath()] : [])];
+      ops.push(pushGraphicsState());
+      if (p.fill) ops.push(setFillingRgbColor(...p.fill), ...path(), fill());
+      if (p.stroke) ops.push(setStrokingRgbColor(...p.stroke), setLineWidth(p.lw ?? 1), setLineCap(LineCapStyle.Round), setLineJoin(LineJoinStyle.Round), ...path(), stroke());
+      ops.push(popGraphicsState());
+    } else if (p.k === "text") {
+      const f = fonts.get(p.f)!;
+      ops.push(beginText(), setFillingRgbColor(...p.c), setFontAndSize(p.f, p.size), moveText(p.x, p.y), showText(f.encodeText(sanitize(f, p.t))), endText());
+    } else if (p.k === "img" && img) {
+      ops.push(pushGraphicsState(), concatTransformationMatrix(p.w, 0, 0, p.h, p.x, p.y), drawObject("Im1"), popGraphicsState());
+    }
   }
   const r = (rot * Math.PI) / 180;
   const cos = Math.round(Math.cos(r)), sin = Math.round(Math.sin(r));
   const stream = doc.context.formXObject(ops, {
     BBox: [0, 0, w, h],
     Matrix: [cos, sin, -sin, cos, 0, 0],
-    Resources: { Font: { F1: f1.ref, F2: f2.ref }, ...(img ? { XObject: { Im1: img.ref } } : {}) },
+    Resources: { Font: Object.fromEntries([...fonts].map(([k, f]) => [k, f.ref])), ...(img ? { XObject: { Im1: img.ref } } : {}) },
   });
   return doc.context.register(stream);
 }
@@ -298,13 +306,11 @@ export async function prepareSignature(bytes: Uint8Array, s: CertSummary, o: Sig
     const pts = [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].map(([a, b]) => o.viewport!.convertToPdfPoint(a, b));
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     rect = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-    const f1 = await doc.embedFont(StandardFonts.Helvetica);
-    const f2 = await doc.embedFont(StandardFonts.HelveticaBold);
     let img: PDFImage | undefined;
     if (o.image) {
       try { img = await doc.embedPng(o.image); } catch { img = await doc.embedJpg(o.image); }
     }
-    apRef = appearance(doc, w, h, o.viewport.rotation, s, o, f1, f2, img);
+    apRef = await appearance(doc, w, h, o.viewport.rotation, s, o, img);
   }
 
   const acroExisting = doc.catalog.lookupMaybe(N("AcroForm"), PDFDict);

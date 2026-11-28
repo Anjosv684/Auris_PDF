@@ -57,14 +57,23 @@ export default function App() {
     let printBuf: string[] = [];
     let imgBuf: string[] = [];
     let imgTimer = 0;
+    let compBuf: string[] = [];
+    let compTimer = 0;
     let printTimer = 0;
     const handle = async (l: Launch) => {
       if (l.action === "abrir") return openPaths(l.paths);
       if (l.action === "comprimir") {
-        const files = await Promise.all(l.paths.map(readPath));
-        const cur = useStore.getState().dialog;
-        if (cur?.kind === "compress" && cur.files) useStore.getState().openDialog({ kind: "compress", files: [...cur.files, ...files] });
-        else useStore.getState().openDialog({ kind: "compress", files });
+        // vários arquivos selecionados no Explorer chegam um a um: junta todos numa lista só
+        compBuf.push(...l.paths);
+        clearTimeout(compTimer);
+        compTimer = window.setTimeout(async () => {
+          const paths = compBuf;
+          compBuf = [];
+          const files = await Promise.all(paths.map(readPath));
+          const cur = useStore.getState().dialog;
+          const prev = cur?.kind === "compress" ? cur.files ?? [] : [];
+          useStore.getState().openDialog({ kind: "compress", files: [...prev, ...files.filter((f) => !prev.some((p) => p.path && p.path === f.path))] });
+        }, 700);
         return;
       }
       if (l.action === "imagens") {
